@@ -1,3 +1,13 @@
+/* src/App.css */
+.container { padding: 10px; max-width: 900px; margin: auto; }
+.map { height: 400px; width: 100%; margin-bottom: 16px; border-radius: 6px; }
+.controls { margin-bottom: 16px; }
+.filter-add { display: flex; gap: 8px; margin-bottom: 8px; }
+.form { background: #eee; padding: 10px; border-radius: 6px; display: grid; gap: 6px; }
+.table-container { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #aaa; padding: 6px; text-align: left; }
+th { background: #ddd; }
 .filters {
   display: flex;
   flex-wrap: wrap;
