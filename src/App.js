@@ -26,6 +26,8 @@ function ClickHandler({ onClick }) {
 function App() {
   const [signals, setSignals] = useState([]);
   const [filters, setFilters] = useState({ city: "", freq: "", type: "" });
+  const [sortColumn, setSortColumn] = useState("frequency");
+  const [sortAsc, setSortAsc] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [newSignal, setNewSignal] = useState({
     frequency: "",
@@ -51,6 +53,29 @@ function App() {
     const matchFreq = filters.freq === "" || String(sig.frequency).includes(filters.freq);
     return matchCity && matchType && matchFreq;
   });
+
+  const sortedSignals = [...filteredSignals].sort((a, b) => {
+    let aVal = a[sortColumn];
+    let bVal = b[sortColumn];
+
+    if (typeof aVal === "string") {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (aVal < bVal) return sortAsc ? -1 : 1;
+    if (aVal > bVal) return sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  const handleSort = (column) => {
+    if (sortColumn === column) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortColumn(column);
+      setSortAsc(true);
+    }
+  };
 
   const saveSignal = () => {
     push(ref(db, "signals"), {
@@ -84,6 +109,11 @@ function App() {
     }
   };
 
+  const sortIndicator = (col) => {
+    if (sortColumn !== col) return "";
+    return sortAsc ? " ↑" : " ↓";
+  };
+
   return (
     <div className="container">
       <h2>📻 Radio Signal Database</h2>
@@ -94,7 +124,7 @@ function App() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ClickHandler onClick={handleMapClick} />
-        {filteredSignals.map((s) => (
+        {sortedSignals.map((s) => (
           <Marker key={s.id} position={[s.lat, s.lon]} icon={defaultIcon}>
             <Popup>
               <b>{s.frequency} MHz</b>
@@ -188,16 +218,28 @@ function App() {
         <table>
           <thead>
             <tr>
-              <th>Frequency (MHz)</th>
-              <th>City</th>
-              <th>Lat</th>
-              <th>Lon</th>
-              <th>Type</th>
-              <th>Description</th>
+              <th onClick={() => handleSort("frequency")}>
+                Frequency (MHz){sortIndicator("frequency")}
+              </th>
+              <th onClick={() => handleSort("city")}>
+                City{sortIndicator("city")}
+              </th>
+              <th onClick={() => handleSort("lat")}>
+                Lat{sortIndicator("lat")}
+              </th>
+              <th onClick={() => handleSort("lon")}>
+                Lon{sortIndicator("lon")}
+              </th>
+              <th onClick={() => handleSort("type")}>
+                Type{sortIndicator("type")}
+              </th>
+              <th onClick={() => handleSort("description")}>
+                Description{sortIndicator("description")}
+              </th>
             </tr>
           </thead>
           <tbody>
-            {filteredSignals.map((s) => (
+            {sortedSignals.map((s) => (
               <tr key={s.id}>
                 <td>{s.frequency}</td>
                 <td>{s.city}</td>
