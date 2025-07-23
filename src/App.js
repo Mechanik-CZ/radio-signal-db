@@ -3,8 +3,11 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
+// Use online CDN for Leaflet icons (fixes build issues)
 const defaultIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
@@ -55,63 +58,69 @@ function App() {
   };
 
   return (
-    <div style={{ padding: "10px" }}>
+    <div style={{ padding: "10px", maxWidth: "900px", margin: "auto" }}>
       <h2>📻 Radio Signal Database</h2>
 
       <div style={{ marginBottom: "10px" }}>
-        🔍 Filter by city:{" "}
+        🔍 <b>Filter by city:</b>{" "}
         <input
           value={filterCity}
           onChange={(e) => setFilterCity(e.target.value)}
-          placeholder="Type a city..."
+          placeholder="e.g., Prague"
         />
+        {"  "}
         <button onClick={() => setShowForm(!showForm)}>
           {showForm ? "Cancel" : "➕ Add Frequency"}
         </button>
       </div>
 
       {showForm && (
-        <div style={{ background: "#eee", padding: "10px", marginBottom: "10px" }}>
-          <h4>Add New Frequency</h4>
+        <div style={{ background: "#eee", padding: "10px", marginBottom: "10px", borderRadius: "6px" }}>
+          <h4>➕ Add New Frequency</h4>
           <input
+            style={{ width: "100%", marginBottom: "4px" }}
             placeholder="Frequency (MHz)"
             value={newSignal.frequency}
             onChange={(e) => setNewSignal({ ...newSignal, frequency: e.target.value })}
           />
           <input
+            style={{ width: "100%", marginBottom: "4px" }}
             placeholder="City"
             value={newSignal.city}
             onChange={(e) => setNewSignal({ ...newSignal, city: e.target.value })}
           />
           <input
+            style={{ width: "100%", marginBottom: "4px" }}
             placeholder="Latitude"
             value={newSignal.lat}
             onChange={(e) => setNewSignal({ ...newSignal, lat: parseFloat(e.target.value) })}
           />
           <input
+            style={{ width: "100%", marginBottom: "4px" }}
             placeholder="Longitude"
             value={newSignal.lon}
             onChange={(e) => setNewSignal({ ...newSignal, lon: parseFloat(e.target.value) })}
           />
           <input
+            style={{ width: "100%", marginBottom: "4px" }}
             placeholder="Type (e.g., PMR, Airband)"
             value={newSignal.type}
             onChange={(e) => setNewSignal({ ...newSignal, type: e.target.value })}
           />
           <input
+            style={{ width: "100%", marginBottom: "6px" }}
             placeholder="Description"
             value={newSignal.description}
             onChange={(e) => setNewSignal({ ...newSignal, description: e.target.value })}
           />
-          <br />
-          <button onClick={handleAddSignal}>✅ Save Frequency</button>
+          <button onClick={handleAddSignal}>✅ Save</button>
         </div>
       )}
 
       <h3>📋 Frequency List</h3>
       <ul>
         {filteredSignals.map((s) => (
-          <li key={s.id}>
+          <li key={s.id} style={{ marginBottom: "6px" }}>
             <strong>{s.frequency} MHz</strong> – {s.city} – {s.type}  
             <br />
             <small>{s.description}</small>
@@ -120,9 +129,9 @@ function App() {
       </ul>
 
       <h3>🗺 Map View</h3>
-      <MapContainer center={[49.8, 15.5]} zoom={7} style={{ height: "400px", width: "100%" }}>
+      <MapContainer center={[49.8, 15.5]} zoom={7} style={{ height: "400px", width: "100%", borderRadius: "6px" }}>
         <TileLayer
-          attribution='&copy; OpenStreetMap contributors'
+          attribution='&copy; <a href="https://osm.org">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {filteredSignals.map((s) => (
@@ -130,7 +139,7 @@ function App() {
             <Popup>
               <strong>{s.frequency} MHz</strong><br />
               {s.city} – {s.type}<br />
-              {s.description}
+              <small>{s.description}</small>
             </Popup>
           </Marker>
         ))}
