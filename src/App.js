@@ -6,7 +6,6 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "./App.css";
 
-// Leaflet custom icon via CDN
 const defaultIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
   iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
@@ -15,25 +14,28 @@ const defaultIcon = new L.Icon({
   iconAnchor: [12, 41],
 });
 
-// Map click handler hook
 function ClickHandler({ onClick }) {
   useMapEvents({
     click(e) {
       onClick(e.latlng);
-    }
+    },
   });
   return null;
 }
 
 function App() {
   const [signals, setSignals] = useState([]);
-  const [filterCity, setFilterCity] = useState("");
+  const [filters, setFilters] = useState({ city: "", freq: "", type: "" });
   const [showForm, setShowForm] = useState(false);
   const [newSignal, setNewSignal] = useState({
-    frequency: "", city: "", lat: "", lon: "", type: "", description: ""
+    frequency: "",
+    city: "",
+    lat: "",
+    lon: "",
+    type: "",
+    description: "",
   });
 
-  // Load signals from Firebase
   useEffect(() => {
     const signalsRef = ref(db, "signals");
     onValue(signalsRef, (snapshot) => {
@@ -43,11 +45,13 @@ function App() {
     });
   }, []);
 
-  const filteredSignals = signals.filter(sig =>
-    sig.city?.toLowerCase().includes(filterCity.toLowerCase())
-  );
+  const filteredSignals = signals.filter((sig) => {
+    const matchCity = sig.city?.toLowerCase().includes(filters.city.toLowerCase());
+    const matchType = sig.type?.toLowerCase().includes(filters.type.toLowerCase());
+    const matchFreq = filters.freq === "" || String(sig.frequency).includes(filters.freq);
+    return matchCity && matchType && matchFreq;
+  });
 
-  // Save new signal to Firebase
   const saveSignal = () => {
     push(ref(db, "signals"), {
       frequency: parseFloat(newSignal.frequency),
@@ -56,17 +60,23 @@ function App() {
       lon: newSignal.lon,
       type: newSignal.type,
       description: newSignal.description,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
     clearForm();
   };
 
   const clearForm = () => {
-    setNewSignal({ frequency: "", city: "", lat: "", lon: "", type: "", description: "" });
+    setNewSignal({
+      frequency: "",
+      city: "",
+      lat: "",
+      lon: "",
+      type: "",
+      description: "",
+    });
     setShowForm(false);
   };
 
-  // Map click → prompt add
   const handleMapClick = (latlng) => {
     if (window.confirm("Create new frequency here?")) {
       setNewSignal({ ...newSignal, lat: latlng.lat, lon: latlng.lng });
@@ -84,11 +94,13 @@ function App() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ClickHandler onClick={handleMapClick} />
-        {filteredSignals.map(s => (
+        {filteredSignals.map((s) => (
           <Marker key={s.id} position={[s.lat, s.lon]} icon={defaultIcon}>
             <Popup>
-              <b>{s.frequency} MHz</b><br/>
-              {s.city} – {s.type}<br/>
+              <b>{s.frequency} MHz</b>
+              <br />
+              {s.city} – {s.type}
+              <br />
               <small>{s.description}</small>
             </Popup>
           </Marker>
@@ -96,11 +108,21 @@ function App() {
       </MapContainer>
 
       <div className="controls">
-        <div className="filter-add">
+        <div className="filters">
           <input
-            value={filterCity}
-            onChange={e => setFilterCity(e.target.value)}
-            placeholder="Filter by city…"
+            value={filters.city}
+            onChange={(e) => setFilters({ ...filters, city: e.target.value })}
+            placeholder="City"
+          />
+          <input
+            value={filters.freq}
+            onChange={(e) => setFilters({ ...filters, freq: e.target.value })}
+            placeholder="Frequency"
+          />
+          <input
+            value={filters.type}
+            onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+            placeholder="Type"
           />
           <button onClick={() => setShowForm(!showForm)}>
             {showForm ? "Cancel" : "➕ Add Frequency"}
@@ -110,37 +132,52 @@ function App() {
         {showForm && (
           <div className="form">
             <input
-              type="number" step="any"
+              type="number"
+              step="any"
               placeholder="Frequency (MHz)"
               value={newSignal.frequency}
-              onChange={e => setNewSignal({ ...newSignal, frequency: e.target.value })}
+              onChange={(e) =>
+                setNewSignal({ ...newSignal, frequency: e.target.value })
+              }
             />
             <input
               placeholder="City"
               value={newSignal.city}
-              onChange={e => setNewSignal({ ...newSignal, city: e.target.value })}
+              onChange={(e) =>
+                setNewSignal({ ...newSignal, city: e.target.value })
+              }
             />
             <input
-              type="number" step="any"
+              type="number"
+              step="any"
               placeholder="Latitude"
               value={newSignal.lat}
-              onChange={e => setNewSignal({ ...newSignal, lat: parseFloat(e.target.value) })}
+              onChange={(e) =>
+                setNewSignal({ ...newSignal, lat: parseFloat(e.target.value) })
+              }
             />
             <input
-              type="number" step="any"
+              type="number"
+              step="any"
               placeholder="Longitude"
               value={newSignal.lon}
-              onChange={e => setNewSignal({ ...newSignal, lon: parseFloat(e.target.value) })}
+              onChange={(e) =>
+                setNewSignal({ ...newSignal, lon: parseFloat(e.target.value) })
+              }
             />
             <input
               placeholder="Type"
               value={newSignal.type}
-              onChange={e => setNewSignal({ ...newSignal, type: e.target.value })}
+              onChange={(e) =>
+                setNewSignal({ ...newSignal, type: e.target.value })
+              }
             />
             <input
               placeholder="Description"
               value={newSignal.description}
-              onChange={e => setNewSignal({ ...newSignal, description: e.target.value })}
+              onChange={(e) =>
+                setNewSignal({ ...newSignal, description: e.target.value })
+              }
             />
             <button onClick={saveSignal}>✅ Save</button>
           </div>
@@ -151,11 +188,16 @@ function App() {
         <table>
           <thead>
             <tr>
-              <th>Frequency (MHz)</th><th>City</th><th>Lat</th><th>Lon</th><th>Type</th><th>Description</th>
+              <th>Frequency (MHz)</th>
+              <th>City</th>
+              <th>Lat</th>
+              <th>Lon</th>
+              <th>Type</th>
+              <th>Description</th>
             </tr>
           </thead>
           <tbody>
-            {filteredSignals.map(s => (
+            {filteredSignals.map((s) => (
               <tr key={s.id}>
                 <td>{s.frequency}</td>
                 <td>{s.city}</td>
