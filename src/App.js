@@ -1,9 +1,12 @@
-import React, { useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import React, { useEffect, useState } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import { ref, push, onValue } from "firebase/database";
+import { db } from "./firebase";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import "./App.css";
 
-// Fix for Leaflet marker icons using CDN
+// Leaflet custom icon via CDN
 const defaultIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
   iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
@@ -12,170 +15,159 @@ const defaultIcon = new L.Icon({
   iconAnchor: [12, 41],
 });
 
-const initialData = [
-  {
-    id: 1,
-    frequency: 145.5,
-    city: "Prague",
-    lat: 50.0755,
-    lon: 14.4378,
-    type: "Amateur VHF",
-    description: "Repeater OK0P",
-  },
-  {
-    id: 2,
-    frequency: 446.00625,
-    city: "Brno",
-    lat: 49.1951,
-    lon: 16.6068,
-    type: "PMR",
-    description: "Channel 1",
-  },
-];
+// Map click handler hook
+function ClickHandler({ onClick }) {
+  useMapEvents({
+    click(e) {
+      onClick(e.latlng);
+    }
+  });
+  return null;
+}
 
 function App() {
-  const [signals, setSignals] = useState(initialData);
+  const [signals, setSignals] = useState([]);
   const [filterCity, setFilterCity] = useState("");
-  const [newSignal, setNewSignal] = useState({
-    frequency: "",
-    city: "",
-    lat: "",
-    lon: "",
-    type: "",
-    description: "",
-  });
   const [showForm, setShowForm] = useState(false);
+  const [newSignal, setNewSignal] = useState({
+    frequency: "", city: "", lat: "", lon: "", type: "", description: ""
+  });
 
-  const filteredSignals = signals.filter((signal) =>
-    signal.city.toLowerCase().includes(filterCity.toLowerCase())
+  // Load signals from Firebase
+  useEffect(() => {
+    const signalsRef = ref(db, "signals");
+    onValue(signalsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const list = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+      setSignals(list);
+    });
+  }, []);
+
+  const filteredSignals = signals.filter(sig =>
+    sig.city?.toLowerCase().includes(filterCity.toLowerCase())
   );
 
-  const handleAddSignal = () => {
-    const newId = Date.now();
-    setSignals([...signals, { ...newSignal, id: newId }]);
-    setNewSignal({
-      frequency: "",
-      city: "",
-      lat: "",
-      lon: "",
-      type: "",
-      description: "",
+  // Save new signal to Firebase
+  const saveSignal = () => {
+    push(ref(db, "signals"), {
+      frequency: parseFloat(newSignal.frequency),
+      city: newSignal.city,
+      lat: newSignal.lat,
+      lon: newSignal.lon,
+      type: newSignal.type,
+      description: newSignal.description,
+      timestamp: Date.now()
     });
+    clearForm();
+  };
+
+  const clearForm = () => {
+    setNewSignal({ frequency: "", city: "", lat: "", lon: "", type: "", description: "" });
     setShowForm(false);
   };
 
+  // Map click → prompt add
+  const handleMapClick = (latlng) => {
+    if (window.confirm("Create new frequency here?")) {
+      setNewSignal({ ...newSignal, lat: latlng.lat, lon: latlng.lng });
+      setShowForm(true);
+    }
+  };
+
   return (
-    <div style={{ padding: "10px", maxWidth: "900px", margin: "auto" }}>
+    <div className="container">
       <h2>📻 Radio Signal Database</h2>
 
-      <div style={{ marginBottom: "10px" }}>
-        🔍 <b>Filter by city:</b>{" "}
-        <input
-          value={filterCity}
-          onChange={(e) => setFilterCity(e.target.value)}
-          placeholder="e.g., Prague"
-        />
-        {"  "}
-        <button onClick={() => setShowForm(!showForm)}>
-          {showForm ? "Cancel" : "➕ Add Frequency"}
-        </button>
-      </div>
-
-      {showForm && (
-        <div
-          style={{
-            background: "#eee",
-            padding: "10px",
-            marginBottom: "10px",
-            borderRadius: "6px",
-          }}
-        >
-          <h4>➕ Add New Frequency</h4>
-          <input
-            style={{ width: "100%", marginBottom: "4px" }}
-            placeholder="Frequency (MHz)"
-            value={newSignal.frequency}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, frequency: e.target.value })
-            }
-          />
-          <input
-            style={{ width: "100%", marginBottom: "4px" }}
-            placeholder="City"
-            value={newSignal.city}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, city: e.target.value })
-            }
-          />
-          <input
-            style={{ width: "100%", marginBottom: "4px" }}
-            placeholder="Latitude"
-            value={newSignal.lat}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, lat: parseFloat(e.target.value) })
-            }
-          />
-          <input
-            style={{ width: "100%", marginBottom: "4px" }}
-            placeholder="Longitude"
-            value={newSignal.lon}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, lon: parseFloat(e.target.value) })
-            }
-          />
-          <input
-            style={{ width: "100%", marginBottom: "4px" }}
-            placeholder="Type (e.g., PMR, Airband)"
-            value={newSignal.type}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, type: e.target.value })
-            }
-          />
-          <input
-            style={{ width: "100%", marginBottom: "6px" }}
-            placeholder="Description"
-            value={newSignal.description}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, description: e.target.value })
-            }
-          />
-          <button onClick={handleAddSignal}>✅ Save</button>
-        </div>
-      )}
-
-      <h3>📋 Frequency List</h3>
-      <ul>
-        {filteredSignals.map((s) => (
-          <li key={s.id} style={{ marginBottom: "6px" }}>
-            <strong>{s.frequency} MHz</strong> – {s.city} – {s.type}
-            <br />
-            <small>{s.description}</small>
-          </li>
-        ))}
-      </ul>
-
-      <h3>🗺 Map View</h3>
-      <MapContainer
-        center={[49.8, 15.5]}
-        zoom={7}
-        style={{ height: "400px", width: "100%", borderRadius: "6px" }}
-      >
+      <MapContainer center={[49.8, 15.5]} zoom={7} className="map">
         <TileLayer
-          attribution='&copy; <a href="https://osm.org">OpenStreetMap</a> contributors'
+          attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {filteredSignals.map((s) => (
+        <ClickHandler onClick={handleMapClick} />
+        {filteredSignals.map(s => (
           <Marker key={s.id} position={[s.lat, s.lon]} icon={defaultIcon}>
             <Popup>
-              <strong>{s.frequency} MHz</strong>
-              <br />
-              {s.city} – {s.type}
-              <br />
+              <b>{s.frequency} MHz</b><br/>
+              {s.city} – {s.type}<br/>
               <small>{s.description}</small>
             </Popup>
           </Marker>
         ))}
       </MapContainer>
+
+      <div className="controls">
+        <div className="filter-add">
+          <input
+            value={filterCity}
+            onChange={e => setFilterCity(e.target.value)}
+            placeholder="Filter by city…"
+          />
+          <button onClick={() => setShowForm(!showForm)}>
+            {showForm ? "Cancel" : "➕ Add Frequency"}
+          </button>
+        </div>
+
+        {showForm && (
+          <div className="form">
+            <input
+              type="number" step="any"
+              placeholder="Frequency (MHz)"
+              value={newSignal.frequency}
+              onChange={e => setNewSignal({ ...newSignal, frequency: e.target.value })}
+            />
+            <input
+              placeholder="City"
+              value={newSignal.city}
+              onChange={e => setNewSignal({ ...newSignal, city: e.target.value })}
+            />
+            <input
+              type="number" step="any"
+              placeholder="Latitude"
+              value={newSignal.lat}
+              onChange={e => setNewSignal({ ...newSignal, lat: parseFloat(e.target.value) })}
+            />
+            <input
+              type="number" step="any"
+              placeholder="Longitude"
+              value={newSignal.lon}
+              onChange={e => setNewSignal({ ...newSignal, lon: parseFloat(e.target.value) })}
+            />
+            <input
+              placeholder="Type"
+              value={newSignal.type}
+              onChange={e => setNewSignal({ ...newSignal, type: e.target.value })}
+            />
+            <input
+              placeholder="Description"
+              value={newSignal.description}
+              onChange={e => setNewSignal({ ...newSignal, description: e.target.value })}
+            />
+            <button onClick={saveSignal}>✅ Save</button>
+          </div>
+        )}
+      </div>
+
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Frequency (MHz)</th><th>City</th><th>Lat</th><th>Lon</th><th>Type</th><th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredSignals.map(s => (
+              <tr key={s.id}>
+                <td>{s.frequency}</td>
+                <td>{s.city}</td>
+                <td>{s.lat.toFixed(4)}</td>
+                <td>{s.lon.toFixed(4)}</td>
+                <td>{s.type}</td>
+                <td>{s.description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
