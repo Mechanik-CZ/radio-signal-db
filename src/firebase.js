@@ -5,7 +5,7 @@ import { getDatabase } from "firebase/database";
 const firebaseConfig = {
   apiKey: "AIzaSyDrrk8HnmLTE8BfGIp4qog0pRVDgiM1xAM",
   authDomain: "radiosignaldb.firebaseapp.com",
-  databaseURL: "https://radiosignaldb-default-rtdb.firebaseio.com", // ← REQUIRED
+  databaseURL: "https://radiosignaldb-default-rtdb.europe-west1.firebasedatabase.app/", // ← REQUIRED
   projectId: "radiosignaldb",
   storageBucket: "radiosignaldb.firebasestorage.app",
   messagingSenderId: "710694962829",
