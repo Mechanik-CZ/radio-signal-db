@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-// Use online CDN for Leaflet icons (fixes build issues)
+// Fix for Leaflet marker icons using CDN
 const defaultIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
   iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
@@ -15,7 +15,7 @@ const defaultIcon = new L.Icon({
 const initialData = [
   {
     id: 1,
-    frequency: 145.500,
+    frequency: 145.5,
     city: "Prague",
     lat: 50.0755,
     lon: 14.4378,
@@ -46,14 +46,21 @@ function App() {
   });
   const [showForm, setShowForm] = useState(false);
 
-  const filteredSignals = signals.filter(signal =>
+  const filteredSignals = signals.filter((signal) =>
     signal.city.toLowerCase().includes(filterCity.toLowerCase())
   );
 
   const handleAddSignal = () => {
     const newId = Date.now();
     setSignals([...signals, { ...newSignal, id: newId }]);
-    setNewSignal({ frequency: "", city: "", lat: "", lon: "", type: "", description: "" });
+    setNewSignal({
+      frequency: "",
+      city: "",
+      lat: "",
+      lon: "",
+      type: "",
+      description: "",
+    });
     setShowForm(false);
   };
 
@@ -75,43 +82,62 @@ function App() {
       </div>
 
       {showForm && (
-        <div style={{ background: "#eee", padding: "10px", marginBottom: "10px", borderRadius: "6px" }}>
+        <div
+          style={{
+            background: "#eee",
+            padding: "10px",
+            marginBottom: "10px",
+            borderRadius: "6px",
+          }}
+        >
           <h4>➕ Add New Frequency</h4>
           <input
             style={{ width: "100%", marginBottom: "4px" }}
             placeholder="Frequency (MHz)"
             value={newSignal.frequency}
-            onChange={(e) => setNewSignal({ ...newSignal, frequency: e.target.value })}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, frequency: e.target.value })
+            }
           />
           <input
             style={{ width: "100%", marginBottom: "4px" }}
             placeholder="City"
             value={newSignal.city}
-            onChange={(e) => setNewSignal({ ...newSignal, city: e.target.value })}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, city: e.target.value })
+            }
           />
           <input
             style={{ width: "100%", marginBottom: "4px" }}
             placeholder="Latitude"
             value={newSignal.lat}
-            onChange={(e) => setNewSignal({ ...newSignal, lat: parseFloat(e.target.value) })}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, lat: parseFloat(e.target.value) })
+            }
           />
           <input
             style={{ width: "100%", marginBottom: "4px" }}
             placeholder="Longitude"
             value={newSignal.lon}
-            onChange={(e) => setNewSignal({ ...newSignal, lon: parseFloat(e.target.value) })}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, lon: parseFloat(e.target.value) })
+            }
           />
           <input
             style={{ width: "100%", marginBottom: "4px" }}
             placeholder="Type (e.g., PMR, Airband)"
             value={newSignal.type}
-            onChange={(e) => setNewSignal({ ...newSignal, type: e.target.value })}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, type: e.target.value })
+            }
           />
           <input
             style={{ width: "100%", marginBottom: "6px" }}
             placeholder="Description"
             value={newSignal.description}
-            onChange={(e) => setNewSignal({ ...newSignal, description: e.target.value })}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, description: e.target.value })
+            }
           />
           <button onClick={handleAddSignal}>✅ Save</button>
         </div>
@@ -121,7 +147,7 @@ function App() {
       <ul>
         {filteredSignals.map((s) => (
           <li key={s.id} style={{ marginBottom: "6px" }}>
-            <strong>{s.frequency} MHz</strong> – {s.city} – {s.type}  
+            <strong>{s.frequency} MHz</strong> – {s.city} – {s.type}
             <br />
             <small>{s.description}</small>
           </li>
@@ -129,7 +155,11 @@ function App() {
       </ul>
 
       <h3>🗺 Map View</h3>
-      <MapContainer center={[49.8, 15.5]} zoom={7} style={{ height: "400px", width: "100%", borderRadius: "6px" }}>
+      <MapContainer
+        center={[49.8, 15.5]}
+        zoom={7}
+        style={{ height: "400px", width: "100%", borderRadius: "6px" }}
+      >
         <TileLayer
           attribution='&copy; <a href="https://osm.org">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -137,8 +167,10 @@ function App() {
         {filteredSignals.map((s) => (
           <Marker key={s.id} position={[s.lat, s.lon]} icon={defaultIcon}>
             <Popup>
-              <strong>{s.frequency} MHz</strong><br />
-              {s.city} – {s.type}<br />
+              <strong>{s.frequency} MHz</strong>
+              <br />
+              {s.city} – {s.type}
+              <br />
               <small>{s.description}</small>
             </Popup>
           </Marker>
