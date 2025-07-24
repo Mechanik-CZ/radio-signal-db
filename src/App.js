@@ -6,24 +6,27 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "./App.css";
 
-const typeToColor = {
-  dmr: "red",
-  fm: "blue",
-  nfm: "blue",
-  am: "orange",
-  ssb: "violet",
-  digi: "green",
-  rtty: "green",
-  ft8: "green",
-  air: "yellow",
-  atc: "yellow",
-  "d-star": "purple",
-  tetra: "teal",
-  tetrapol: "brown",
-  c4fm: "pink",
-  nxdn: "cyan",
-  unknown: "grey",
-  "?": "grey",
+// Define type categories
+const analogTypes = [
+  "nfm", "fm", "bfm", "am", "nam", "ssb", "usb", "lsb", "dsb"
+];
+
+const commonDigitals = [
+  "dmr", "d-star", "tetra", "tetrapol", "nxdn", "c4fm"
+];
+
+const simpleDigitals = [
+  "rtty", "ft8", "ft4", "packet", "digi"
+];
+
+// Determine marker color based on type
+const determineColor = (type = "") => {
+  const t = type.toLowerCase();
+  if (analogTypes.includes(t)) return "blue";
+  if (commonDigitals.includes(t)) return "red";
+  if (simpleDigitals.includes(t)) return "green";
+  if (t === "unknown" || t === "?") return "grey";
+  return "grey";
 };
 
 const createColorIcon = (color = "grey") =>
@@ -95,11 +98,6 @@ function App() {
       setSortColumn(column);
       setSortAsc(true);
     }
-  };
-
-  const determineColor = (type = "") => {
-    const lowerType = type.toLowerCase();
-    return typeToColor[lowerType] || "grey";
   };
 
   const saveSignal = () => {
