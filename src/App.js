@@ -15,8 +15,8 @@ const typeToColor = {
   digi: "green",
   rtty: "green",
   ft8: "green",
-  air: "yellow",
-  atc: "yellow",
+  d-star: "yellow",
+//  atc: "yellow",
   unknown: "grey",
   "?": "grey",
 };
