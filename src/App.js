@@ -6,13 +6,16 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "./App.css";
 
-const defaultIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
+// Create a Leaflet icon by color
+const createColorIcon = (color = "gray") =>
+  new L.Icon({
+    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
+    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  });
 
 function ClickHandler({ onClick }) {
   useMapEvents({
@@ -36,6 +39,7 @@ function App() {
     lon: "",
     type: "",
     description: "",
+    color: ""
   });
 
   useEffect(() => {
@@ -85,6 +89,7 @@ function App() {
       lon: newSignal.lon,
       type: newSignal.type,
       description: newSignal.description,
+      color: newSignal.color || "gray",
       timestamp: Date.now(),
     });
     clearForm();
@@ -98,6 +103,7 @@ function App() {
       lon: "",
       type: "",
       description: "",
+      color: ""
     });
     setShowForm(false);
   };
@@ -118,6 +124,8 @@ function App() {
     <div className="container">
       <h2>📻 Radio Signal Database</h2>
 
+      <div className="corner-label">Managed by @mechanikcz</div>
+
       <MapContainer center={[49.8, 15.5]} zoom={7} className="map">
         <TileLayer
           attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
@@ -125,7 +133,11 @@ function App() {
         />
         <ClickHandler onClick={handleMapClick} />
         {sortedSignals.map((s) => (
-          <Marker key={s.id} position={[s.lat, s.lon]} icon={defaultIcon}>
+          <Marker
+            key={s.id}
+            position={[s.lat, s.lon]}
+            icon={createColorIcon(s.color || "gray")}
+          >
             <Popup>
               <b>{s.frequency} MHz</b>
               <br />
@@ -207,6 +219,13 @@ function App() {
               value={newSignal.description}
               onChange={(e) =>
                 setNewSignal({ ...newSignal, description: e.target.value })
+              }
+            />
+            <input
+              placeholder="Marker Color (e.g. red, blue, green)"
+              value={newSignal.color}
+              onChange={(e) =>
+                setNewSignal({ ...newSignal, color: e.target.value })
               }
             />
             <button onClick={saveSignal}>✅ Save</button>

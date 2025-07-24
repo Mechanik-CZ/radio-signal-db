@@ -14,8 +14,15 @@ th { background: #ddd; }
   gap: 8px;
   margin-bottom: 12px;
 }
-
 .filters input {
   flex: 1;
   min-width: 120px;
+}
+.corner-label {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  font-size: 12px;
+  color: #777;
+  pointer-events: none;
 }
