@@ -15,13 +15,18 @@ const typeToColor = {
   digi: "green",
   rtty: "green",
   ft8: "green",
-  d-star: "yellow",
-//  atc: "yellow",
+  air: "yellow",
+  atc: "yellow",
+  "d-star": "purple",
+  tetra: "teal",
+  tetrapol: "brown",
+  c4fm: "pink",
+  nxdn: "cyan",
   unknown: "grey",
   "?": "grey",
 };
 
-const createColorIcon = (color = "black") =>
+const createColorIcon = (color = "grey") =>
   new L.Icon({
     iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
     shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
@@ -94,7 +99,7 @@ function App() {
 
   const determineColor = (type = "") => {
     const lowerType = type.toLowerCase();
-    return typeToColor[lowerType] || "black";
+    return typeToColor[lowerType] || "grey";
   };
 
   const saveSignal = () => {
@@ -266,16 +271,21 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            {sortedSignals.map((s) => (
-              <tr key={s.id}>
-                <td>{s.frequency}</td>
-                <td>{s.city}</td>
-                <td>{s.lat.toFixed(4)}</td>
-                <td>{s.lon.toFixed(4)}</td>
-                <td>{s.type}</td>
-                <td>{s.description}</td>
-              </tr>
-            ))}
+            {sortedSignals.map((s) => {
+              const bgColor = s.color || determineColor(s.type);
+              return (
+                <tr key={s.id}>
+                  <td style={{ backgroundColor: bgColor, color: "white" }}>
+                    {s.frequency}
+                  </td>
+                  <td>{s.city}</td>
+                  <td>{s.lat.toFixed(4)}</td>
+                  <td>{s.lon.toFixed(4)}</td>
+                  <td>{s.type}</td>
+                  <td>{s.description}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
