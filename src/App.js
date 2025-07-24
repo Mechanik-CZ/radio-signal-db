@@ -6,8 +6,22 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "./App.css";
 
-// Create a Leaflet icon by color
-const createColorIcon = (color = "gray") =>
+const typeToColor = {
+  dmr: "red",
+  fm: "blue",
+  nfm: "blue",
+  am: "orange",
+  ssb: "violet",
+  digi: "green",
+  rtty: "green",
+  ft8: "green",
+  air: "yellow",
+  atc: "yellow",
+  unknown: "grey",
+  "?": "grey",
+};
+
+const createColorIcon = (color = "black") =>
   new L.Icon({
     iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
     shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
@@ -38,8 +52,7 @@ function App() {
     lat: "",
     lon: "",
     type: "",
-    description: "",
-    color: ""
+    description: ""
   });
 
   useEffect(() => {
@@ -61,12 +74,10 @@ function App() {
   const sortedSignals = [...filteredSignals].sort((a, b) => {
     let aVal = a[sortColumn];
     let bVal = b[sortColumn];
-
     if (typeof aVal === "string") {
       aVal = aVal.toLowerCase();
       bVal = bVal.toLowerCase();
     }
-
     if (aVal < bVal) return sortAsc ? -1 : 1;
     if (aVal > bVal) return sortAsc ? 1 : -1;
     return 0;
@@ -81,7 +92,13 @@ function App() {
     }
   };
 
+  const determineColor = (type = "") => {
+    const lowerType = type.toLowerCase();
+    return typeToColor[lowerType] || "black";
+  };
+
   const saveSignal = () => {
+    const color = determineColor(newSignal.type);
     push(ref(db, "signals"), {
       frequency: parseFloat(newSignal.frequency),
       city: newSignal.city,
@@ -89,7 +106,7 @@ function App() {
       lon: newSignal.lon,
       type: newSignal.type,
       description: newSignal.description,
-      color: newSignal.color || "gray",
+      color,
       timestamp: Date.now(),
     });
     clearForm();
@@ -102,8 +119,7 @@ function App() {
       lat: "",
       lon: "",
       type: "",
-      description: "",
-      color: ""
+      description: ""
     });
     setShowForm(false);
   };
@@ -123,7 +139,6 @@ function App() {
   return (
     <div className="container">
       <h2>📻 Radio Signal Database</h2>
-
       <div className="corner-label">Managed by @mechanikcz</div>
 
       <MapContainer center={[49.8, 15.5]} zoom={7} className="map">
@@ -136,7 +151,7 @@ function App() {
           <Marker
             key={s.id}
             position={[s.lat, s.lon]}
-            icon={createColorIcon(s.color || "gray")}
+            icon={createColorIcon(s.color || determineColor(s.type))}
           >
             <Popup>
               <b>{s.frequency} MHz</b>
@@ -219,13 +234,6 @@ function App() {
               value={newSignal.description}
               onChange={(e) =>
                 setNewSignal({ ...newSignal, description: e.target.value })
-              }
-            />
-            <input
-              placeholder="Marker Color (e.g. red, blue, green)"
-              value={newSignal.color}
-              onChange={(e) =>
-                setNewSignal({ ...newSignal, color: e.target.value })
               }
             />
             <button onClick={saveSignal}>✅ Save</button>
