@@ -1,3 +1,103 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.nav {
+  background-color: #222;
+  padding: 10px 20px;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  margin-right: 20px;
+  font-weight: bold;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
+}
+
+.container {
+  padding: 20px;
+  max-width: 900px;
+  margin: auto;
+}
+
+.map {
+  height: 400px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.corner-label {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
+
+.controls {
+  margin-bottom: 20px;
+}
+
+.filters input {
+  margin-right: 10px;
+  padding: 5px;
+  width: 120px;
+}
+
+.filters button {
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.form {
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+.form input {
+  display: block;
+  margin-bottom: 8px;
+  padding: 6px;
+  width: 200px;
+}
+
+.form button {
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  cursor: pointer;
+  background-color: #eee;
+  padding: 8px;
+  user-select: none;
+}
+
+td {
+  padding: 8px;
+  border-bottom: 1px solid #ccc;
+}
+
+td:first-child {
+  font-weight: bold;
+  color: white;
+}
+
 .controls-row {
   display: flex;
   justify-content: space-between;
