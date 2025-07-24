@@ -167,82 +167,89 @@ function MainPage() {
         ))}
       </MapContainer>
 
-      <div className="controls">
-        <div className="filters">
-          <input
-            value={filters.city}
-            onChange={(e) => setFilters({ ...filters, city: e.target.value })}
-            placeholder="City"
-          />
-          <input
-            value={filters.freq}
-            onChange={(e) => setFilters({ ...filters, freq: e.target.value })}
-            placeholder="Frequency"
-          />
-          <input
-            value={filters.type}
-            onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-            placeholder="Type"
-          />
-          <button onClick={() => setShowForm(!showForm)}>
-            {showForm ? "Cancel" : "➕ Add Frequency"}
-          </button>
-        </div>
-
-        {showForm && (
-          <div className="form">
+      {/* Filters + Add Frequency Button row */}
+      <div className="controls-row">
+        <div className="filters-box">
+          <div className="filters-label">Filters:</div>
+          <div className="filters-inputs">
             <input
-              type="number"
-              step="any"
-              placeholder="Frequency (MHz)"
-              value={newSignal.frequency}
-              onChange={(e) =>
-                setNewSignal({ ...newSignal, frequency: e.target.value })
-              }
-            />
-            <input
+              value={filters.city}
+              onChange={(e) => setFilters({ ...filters, city: e.target.value })}
               placeholder="City"
-              value={newSignal.city}
-              onChange={(e) =>
-                setNewSignal({ ...newSignal, city: e.target.value })
-              }
             />
             <input
-              type="number"
-              step="any"
-              placeholder="Latitude"
-              value={newSignal.lat}
-              onChange={(e) =>
-                setNewSignal({ ...newSignal, lat: parseFloat(e.target.value) })
-              }
+              value={filters.freq}
+              onChange={(e) => setFilters({ ...filters, freq: e.target.value })}
+              placeholder="Frequency"
             />
             <input
-              type="number"
-              step="any"
-              placeholder="Longitude"
-              value={newSignal.lon}
-              onChange={(e) =>
-                setNewSignal({ ...newSignal, lon: parseFloat(e.target.value) })
-              }
-            />
-            <input
+              value={filters.type}
+              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
               placeholder="Type"
-              value={newSignal.type}
-              onChange={(e) =>
-                setNewSignal({ ...newSignal, type: e.target.value })
-              }
             />
-            <input
-              placeholder="Description"
-              value={newSignal.description}
-              onChange={(e) =>
-                setNewSignal({ ...newSignal, description: e.target.value })
-              }
-            />
-            <button onClick={saveSignal}>✅ Save</button>
           </div>
-        )}
+        </div>
+        <button
+          className="add-freq-btn"
+          onClick={() => setShowForm(!showForm)}
+        >
+          {showForm ? "Cancel" : "➕ Add Frequency"}
+        </button>
       </div>
+
+      {showForm && (
+        <div className="form">
+          <input
+            type="number"
+            step="any"
+            placeholder="Frequency (MHz)"
+            value={newSignal.frequency}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, frequency: e.target.value })
+            }
+          />
+          <input
+            placeholder="City"
+            value={newSignal.city}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, city: e.target.value })
+            }
+          />
+          <input
+            type="number"
+            step="any"
+            placeholder="Latitude"
+            value={newSignal.lat}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, lat: parseFloat(e.target.value) })
+            }
+          />
+          <input
+            type="number"
+            step="any"
+            placeholder="Longitude"
+            value={newSignal.lon}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, lon: parseFloat(e.target.value) })
+            }
+          />
+          <input
+            placeholder="Type"
+            value={newSignal.type}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, type: e.target.value })
+            }
+          />
+          <input
+            placeholder="Description"
+            value={newSignal.description}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, description: e.target.value })
+            }
+          />
+          <button onClick={saveSignal}>✅ Save</button>
+        </div>
+      )}
 
       <div className="table-container">
         <table>

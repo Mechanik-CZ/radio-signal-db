@@ -1,99 +1,56 @@
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
+.controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 900px; /* same as map & table container */
+  margin: 0 auto 20px auto;
 }
 
-.nav {
-  background-color: #222;
-  padding: 10px 20px;
+.filters-box {
+  border: 1px solid #ccc;
+  background-color: white;
+  padding: 10px 15px 10px 15px;
+  border-radius: 6px;
+  flex-grow: 1;
+  max-width: 75%; /* leaves room for button */
+  box-sizing: border-box;
 }
 
-.nav-link {
-  color: white;
-  text-decoration: none;
-  margin-right: 20px;
-  font-weight: bold;
-}
-
-.nav-link:hover {
-  text-decoration: underline;
-}
-
-.container {
-  padding: 20px;
-  max-width: 900px;
-  margin: auto;
-}
-
-.map {
-  height: 400px;
-  width: 100%;
-  margin-bottom: 20px;
-}
-
-.corner-label {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 12px;
-  color: #666;
-  font-style: italic;
-}
-
-.controls {
-  margin-bottom: 20px;
-}
-
-.filters input {
-  margin-right: 10px;
-  padding: 5px;
-  width: 120px;
-}
-
-.filters button {
-  padding: 6px 12px;
-  cursor: pointer;
-}
-
-.form {
-  margin-top: 10px;
-  margin-bottom: 20px;
-}
-
-.form input {
-  display: block;
+.filters-label {
+  font-weight: 600;
   margin-bottom: 8px;
-  padding: 6px;
-  width: 200px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
 }
 
-.form button {
-  padding: 6px 12px;
+.filters-inputs {
+  display: flex;
+  gap: 10px;
+}
+
+.filters-inputs input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.add-freq-btn {
+  margin-left: 20px;
+  padding: 10px 16px;
+  font-size: 15px;
   cursor: pointer;
-}
-
-.table-container {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th {
-  cursor: pointer;
-  background-color: #eee;
-  padding: 8px;
-  user-select: none;
-}
-
-td {
-  padding: 8px;
-  border-bottom: 1px solid #ccc;
-}
-
-td:first-child {
-  font-weight: bold;
+  border-radius: 6px;
+  border: none;
+  background-color: #005bbb;
   color: white;
+  font-weight: 600;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: background-color 0.25s ease;
+}
+
+.add-freq-btn:hover {
+  background-color: #004799;
 }
