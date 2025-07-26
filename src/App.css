@@ -1,156 +1,131 @@
+/* Base page style */
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f2f2f2;
 }
 
-.nav {
-  background-color: #222;
+/* Header at the top of the page */
+header {
   padding: 10px 20px;
-}
-
-.nav-link {
+  background-color: #222;
   color: white;
-  text-decoration: none;
-  margin-right: 20px;
-  font-weight: bold;
-}
-
-.nav-link:hover {
-  text-decoration: underline;
-}
-
-.container {
-  padding: 20px;
-  max-width: 900px;
-  margin: auto;
-}
-
-.map {
-  height: 400px;
-  width: 100%;
-  margin-bottom: 20px;
-}
-
-.corner-label {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 12px;
-  color: #666;
-  font-style: italic;
-}
-
-.controls {
-  margin-bottom: 20px;
-}
-
-.filters input {
-  margin-right: 10px;
-  padding: 5px;
-  width: 120px;
-}
-
-.filters button {
-  padding: 6px 12px;
-  cursor: pointer;
-}
-
-.form {
-  margin-top: 10px;
-  margin-bottom: 20px;
-}
-
-.form input {
-  display: block;
-  margin-bottom: 8px;
-  padding: 6px;
-  width: 200px;
-}
-
-.form button {
-  padding: 6px 12px;
-  cursor: pointer;
-}
-
-.table-container {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th {
-  cursor: pointer;
-  background-color: #eee;
-  padding: 8px;
-  user-select: none;
-}
-
-td {
-  padding: 8px;
-  border-bottom: 1px solid #ccc;
-}
-
-td:first-child {
-  font-weight: bold;
-  color: white;
-}
-
-.controls-row {
+  font-size: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  max-width: 900px; /* same as map & table container */
-  margin: 0 auto 20px auto;
 }
 
-.filters-box {
-  border: 1px solid #ccc;
+/* Container for map display */
+.map-container {
+  height: 400px;
+  width: 100%;
+}
+
+/* General content wrapper */
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+/* Filters and add button container */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid lightgray;
   background-color: white;
-  padding: 10px 15px 10px 15px;
-  border-radius: 6px;
-  flex-grow: 1;
-  max-width: 75%; /* leaves room for button */
+  padding: 10px;
+  margin-bottom: 15px;
+  width: 100%;
   box-sizing: border-box;
 }
 
-.filters-label {
-  font-weight: 600;
-  margin-bottom: 8px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #333;
-}
-
-.filters-inputs {
+/* Grouping filters on the left side */
+.filter-box {
   display: flex;
+  align-items: center;
   gap: 10px;
 }
 
-.filters-inputs input {
-  flex: 1;
-  padding: 6px 10px;
-  border: 1px solid #bbb;
+/* Filter labels */
+.filter-box label {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+/* Filter inputs */
+.filter-box input {
+  padding: 5px;
+  font-size: 14px;
+}
+
+/* General button style */
+button {
+  padding: 8px 12px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
   border-radius: 4px;
   font-size: 14px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.add-freq-btn {
-  margin-left: 20px;
-  padding: 10px 16px;
-  font-size: 15px;
   cursor: pointer;
-  border-radius: 6px;
-  border: none;
-  background-color: #005bbb;
-  color: white;
-  font-weight: 600;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  transition: background-color 0.25s ease;
 }
 
-.add-freq-btn:hover {
-  background-color: #004799;
+button:hover {
+  background-color: #45a049;
+}
+
+/* Frequency list table */
+.frequency-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  margin-bottom: 50px;
+}
+
+/* Table header and data cells */
+.frequency-table th,
+.frequency-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+  font-size: 14px;
+}
+
+/* Table header style */
+.frequency-table th {
+  background-color: #f2f2f2;
+  cursor: pointer;
+}
+
+/* Zebra striping for table rows */
+.frequency-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Frequency background cell with dynamic color */
+.frequency-cell {
+  font-weight: bold;
+  color: white;
+}
+
+/* Small footer label */
+.footer-label {
+  font-size: 11px;
+  text-align: right;
+  margin-right: 5px;
+  color: #777;
+  margin-top: -15px;
+}
+
+/* Help page box */
+.help-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-size: 16px;
+  background-color: white;
+  border: 1px solid #ccc;
+  line-height: 1.6;
 }
