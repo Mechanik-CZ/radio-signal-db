@@ -131,165 +131,162 @@ function MainPage() {
     return sortAsc ? " ↑" : " ↓";
   };
 
-  return (
+   return (
     <div className="container">
-      <h2>📻 Radio Signal Database</h2>
-      <div className="corner-label">Managed by @mechanikcz</div>
+      <h1>Radio Frequency Map</h1>
 
-      {/* Map + Filters side-by-side */}
-      <div className="map-controls-wrapper">
-        <MapContainer center={[49.8, 15.5]} zoom={7} className="map">
+      {/* 🌍 Updated map + controls layout below */}
+      <div className="map-controls-wrapper" style={{ position: "relative", width: "100%" }}>
+        <MapContainer center={[49.8, 15.5]} zoom={7} className="map" style={{ width: "100%", height: "500px" }}>
+          <ClickHandler />
           <TileLayer
-            attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
+            attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <ClickHandler onClick={handleMapClick} />
-          {sortedSignals.map((s) => (
+          {filteredFrequencies.map((freq, idx) => (
             <Marker
-              key={s.id}
-              position={[s.lat, s.lon]}
-              icon={createColorIcon(s.color || determineColor(s.type))}
+              key={idx}
+              position={[freq.lat, freq.lon]}
+              icon={markerIcons[freq.type] || markerIcons["default"]}
             >
               <Popup>
-                <b>{s.frequency} MHz</b>
-                <br />
-                {s.city} – {s.type}
-                <br />
-                <small>{s.description}</small>
+                <strong>{freq.frequency} MHz</strong><br />
+                {freq.city}, {freq.radius} km<br />
+                Type: {freq.type}
               </Popup>
             </Marker>
           ))}
         </MapContainer>
 
-        <div className="controls-row">
+        <div
+          className="controls-row"
+          style={{
+            position: "absolute",
+            top: "10px",
+            right: "10px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: "10px",
+            backgroundColor: "rgba(0,0,0,0.6)",
+            padding: "10px",
+            borderRadius: "8px",
+          }}
+        >
           <div className="filters-box">
-            <div className="filters-label">Filters:</div>
-            <div className="filters-inputs">
-              <input
-                value={filters.city}
-                onChange={(e) => setFilters({ ...filters, city: e.target.value })}
-                placeholder="City"
-              />
-              <input
-                value={filters.freq}
-                onChange={(e) => setFilters({ ...filters, freq: e.target.value })}
-                placeholder="Frequency"
-              />
-              <input
-                value={filters.type}
-                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                placeholder="Type"
-              />
-            </div>
+            <input
+              type="text"
+              placeholder="Filter by frequency"
+              name="frequency"
+              value={filters.frequency}
+              onChange={handleFilterChange}
+            />
+            <input
+              type="text"
+              placeholder="Filter by city"
+              name="city"
+              value={filters.city}
+              onChange={handleFilterChange}
+            />
+            <input
+              type="text"
+              placeholder="Filter by type"
+              name="type"
+              value={filters.type}
+              onChange={handleFilterChange}
+            />
           </div>
-          <button
-            className="add-freq-btn"
-            onClick={() => setShowForm(!showForm)}
-          >
+          <button className="add-freq-btn" onClick={() => setShowForm(!showForm)}>
             {showForm ? "Cancel" : "➕ Add Frequency"}
           </button>
         </div>
       </div>
 
       {showForm && (
-        <div className="form">
+        <form className="add-form" onSubmit={handleFormSubmit}>
           <input
-            type="number"
-            step="any"
-            placeholder="Frequency (MHz)"
-            value={newSignal.frequency}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, frequency: e.target.value })
-            }
+            type="text"
+            placeholder="Frequency (e.g. 438.725)"
+            name="frequency"
+            value={formData.frequency}
+            onChange={handleInputChange}
+            required
           />
           <input
+            type="text"
             placeholder="City"
-            value={newSignal.city}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, city: e.target.value })
-            }
+            name="city"
+            value={formData.city}
+            onChange={handleInputChange}
+            required
           />
           <input
-            type="number"
-            step="any"
+            type="text"
+            placeholder="Radius (km)"
+            name="radius"
+            value={formData.radius}
+            onChange={handleInputChange}
+            required
+          />
+          <input
+            type="text"
+            placeholder="Type (e.g. DMR, NFM)"
+            name="type"
+            value={formData.type}
+            onChange={handleInputChange}
+            required
+          />
+          <input
+            type="text"
             placeholder="Latitude"
-            value={newSignal.lat}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, lat: parseFloat(e.target.value) })
-            }
+            name="lat"
+            value={formData.lat}
+            onChange={handleInputChange}
+            required
           />
           <input
-            type="number"
-            step="any"
+            type="text"
             placeholder="Longitude"
-            value={newSignal.lon}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, lon: parseFloat(e.target.value) })
-            }
+            name="lon"
+            value={formData.lon}
+            onChange={handleInputChange}
+            required
           />
-          <input
-            placeholder="Type"
-            value={newSignal.type}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, type: e.target.value })
-            }
-          />
-          <input
-            placeholder="Description"
-            value={newSignal.description}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, description: e.target.value })
-            }
-          />
-          <button onClick={saveSignal}>✅ Save</button>
-        </div>
+          <button type="submit">✅ Submit</button>
+        </form>
       )}
 
-      <div className="table-container">
+      <div className="freq-list">
+        <h2>Saved Frequencies</h2>
         <table>
           <thead>
             <tr>
-              <th onClick={() => handleSort("frequency")}>
-                Frequency (MHz){sortIndicator("frequency")}
-              </th>
-              <th onClick={() => handleSort("city")}>
-                City{sortIndicator("city")}
-              </th>
-              <th onClick={() => handleSort("lat")}>
-                Lat{sortIndicator("lat")}
-              </th>
-              <th onClick={() => handleSort("lon")}>
-                Lon{sortIndicator("lon")}
-              </th>
-              <th onClick={() => handleSort("type")}>
-                Type{sortIndicator("type")}
-              </th>
-              <th onClick={() => handleSort("description")}>
-                Description{sortIndicator("description")}
-              </th>
+              <th>Frequency</th>
+              <th>City</th>
+              <th>Radius</th>
+              <th>Type</th>
+              <th>Lat</th>
+              <th>Lon</th>
             </tr>
           </thead>
           <tbody>
-            {sortedSignals.map((s) => {
-              const bgColor = s.color || determineColor(s.type);
-              return (
-                <tr key={s.id}>
-                  <td style={{ backgroundColor: bgColor, color: "white" }}>
-                    {s.frequency}
-                  </td>
-                  <td>{s.city}</td>
-                  <td>{s.lat.toFixed(4)}</td>
-                  <td>{s.lon.toFixed(4)}</td>
-                  <td>{s.type}</td>
-                  <td>{s.description}</td>
-                </tr>
-              );
-            })}
+            {filteredFrequencies.map((freq, idx) => (
+              <tr key={idx}>
+                <td style={{ backgroundColor: getTypeColor(freq.type), color: "#fff" }}>{freq.frequency}</td>
+                <td>{freq.city}</td>
+                <td>{freq.radius}</td>
+                <td>{freq.type}</td>
+                <td>{freq.lat}</td>
+                <td>{freq.lon}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
+
+      <div className="footer-label">Managed by @mechanikcz</div>
     </div>
   );
-}
+};
 
 export default MainPage;
