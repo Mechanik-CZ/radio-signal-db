@@ -5,7 +5,11 @@ const HelpPage = () => {
   return (
     <div className="container">
       <h2>Help</h2>
-      <p>To log a new frequency, click on the map to select a location, then fill in the frequency, city, and signal type in the form below. Click "Add Frequency" to save the entry.</p>
+      <p>
+        To log a new frequency, click on the map to select a location,
+        then fill in the frequency, city, and signal type in the form below.
+        Click "Add Frequency" to save the entry.
+      </p>
 
       <h3>Color Legend</h3>
       <ul>

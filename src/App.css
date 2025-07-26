@@ -24,6 +24,7 @@ body {
   padding: 20px;
   max-width: 900px;
   margin: auto;
+  position: relative;
 }
 
 .map {
@@ -51,7 +52,7 @@ body {
 
 .filters-box {
   border: 1px solid #ccc;
-  background-color: #f5f5f5; /* match page bg */
+  background-color: #f5f5f5;
   padding: 10px 15px;
   border-radius: 6px;
   flex-grow: 1;
@@ -92,6 +93,8 @@ body {
   font-weight: 600;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   transition: background-color 0.25s ease;
+  white-space: nowrap;
+  height: fit-content;
 }
 
 .add-freq-btn:hover {
@@ -128,20 +131,26 @@ th {
   cursor: pointer;
   background-color: #eee;
   padding: 8px;
-  border: 1px solid #ccc; /* <-- fix vertical lines */
+  border: 1px solid #ccc;
   user-select: none;
+  text-align: left;
 }
 
 td {
   padding: 8px;
-  border: 1px solid #ccc; /* <-- fix vertical lines */
+  border: 1px solid #ccc;
+  text-align: left;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+tbody tr:hover {
+  background-color: #e7f0fa;
 }
 
 td:first-child {
   font-weight: bold;
   color: white;
-}
-
-tbody tr:nth-child(even) {
-  background-color: #f2f2f2;
 }

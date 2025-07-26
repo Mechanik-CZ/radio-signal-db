@@ -5,10 +5,10 @@ import 'leaflet/dist/leaflet.css';
 import './App.css';
 
 const signalColors = {
-  'analog': 'blue',
-  'digital': 'red',
-  'simple_digital': 'green',
-  'unknown': 'gray'
+  analog: 'blue',
+  digital: 'red',
+  simple_digital: 'green',
+  unknown: 'gray',
 };
 
 function getSignalCategory(type) {
@@ -56,7 +56,7 @@ const MainPage = () => {
         color: '#000',
         weight: 1,
         opacity: 1,
-        fillOpacity: 0.8
+        fillOpacity: 0.8,
       });
       marker.bindPopup(`${f.frequency} MHz<br>${f.city}<br>${f.type}`);
       marker.addTo(map);
@@ -74,12 +74,16 @@ const MainPage = () => {
   };
 
   const handleAdd = () => {
+    if (!form.frequency || !form.city || !form.type || !form.lat || !form.lng) {
+      alert('Please fill in all fields including map location!');
+      return;
+    }
     axios.post('/api/frequencies', form).then(res => {
       const newFreq = res.data;
       setFrequencies([...frequencies, newFreq]);
       setFiltered([...filtered, newFreq]);
       setForm({ frequency: '', city: '', type: '', lat: '', lng: '' });
-    });
+    }).catch(() => alert('Failed to save frequency'));
   };
 
   return (
