@@ -1,290 +1,168 @@
-import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
-import { ref, push, onValue } from "firebase/database";
-import { db } from "./firebase";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-import "./App.css";
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import axios from 'axios';
+import 'leaflet/dist/leaflet.css';
+import './App.css';
 
-// Define type categories
-const analogTypes = ["nfm", "fm", "bfm", "am", "nam", "ssb", "usb", "lsb", "dsb"];
-const commonDigitals = ["dmr", "d-star", "tetra", "tetrapol", "nxdn", "c4fm"];
-const simpleDigitals = ["rtty", "ft8", "ft4", "packet", "digi"];
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png')
+});
 
-// Determine marker color based on type
-const determineColor = (type = "") => {
-  const t = type.toLowerCase();
-  if (analogTypes.includes(t)) return "blue";
-  if (commonDigitals.includes(t)) return "red";
-  if (simpleDigitals.includes(t)) return "green";
-  if (t === "unknown" || t === "?") return "grey";
-  return "grey";
+const colorMap = {
+  DMR: 'red',
+  NFM: 'blue',
+  FM: 'blue',
+  AM: 'orange',
+  SSB: 'purple',
+  DIGI: 'teal',
+  'D-STAR': 'lime',
+  TETRA: 'yellow',
+  TETRAPOL: 'pink',
+  C4FM: 'cyan',
+  NXDN: 'brown',
+  unknown: 'gray',
+  '?': 'gray'
 };
 
-const createColorIcon = (color = "grey") =>
-  new L.Icon({
-    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
-    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
+const MarkerWithColor = ({ position, signalType, children }) => {
+  const markerColor = colorMap[signalType?.toUpperCase()] || 'gray';
+  const icon = L.divIcon({
+    className: 'custom-marker',
+    html: `<div style="background-color:${markerColor}; width:12px; height:12px; border-radius:50%;"></div>`,
+    iconSize: [12, 12],
+    iconAnchor: [6, 6]
   });
 
-function ClickHandler({ onClick }) {
+  return <Marker position={position} icon={icon}>{children}</Marker>;
+};
+
+const ClickHandler = ({ onClick }) => {
   useMapEvents({
     click(e) {
       onClick(e.latlng);
-    },
+    }
   });
   return null;
-}
+};
 
 function MainPage() {
-  const [signals, setSignals] = useState([]);
-  const [filters, setFilters] = useState({ city: "", freq: "", type: "" });
-  const [sortColumn, setSortColumn] = useState("frequency");
+  const [frequencies, setFrequencies] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [sortField, setSortField] = useState('frequency');
   const [sortAsc, setSortAsc] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [newSignal, setNewSignal] = useState({
-    frequency: "",
-    city: "",
-    lat: "",
-    lon: "",
-    type: "",
-    description: ""
-  });
+  const [filters, setFilters] = useState({ city: '', type: '', freq: '' });
 
   useEffect(() => {
-    const signalsRef = ref(db, "signals");
-    onValue(signalsRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      const list = Object.entries(data).map(([id, val]) => ({ id, ...val }));
-      setSignals(list);
+    axios.get('/api/frequencies').then(res => {
+      setFrequencies(res.data);
+      setFiltered(res.data);
     });
   }, []);
 
-  const filteredSignals = signals.filter((sig) => {
-    const matchCity = sig.city?.toLowerCase().includes(filters.city.toLowerCase());
-    const matchType = sig.type?.toLowerCase().includes(filters.type.toLowerCase());
-    const matchFreq = filters.freq === "" || String(sig.frequency).includes(filters.freq);
-    return matchCity && matchType && matchFreq;
-  });
+  useEffect(() => {
+    let result = [...frequencies];
+    if (filters.city) result = result.filter(f => f.city.toLowerCase().includes(filters.city.toLowerCase()));
+    if (filters.type) result = result.filter(f => f.type.toLowerCase().includes(filters.type.toLowerCase()));
+    if (filters.freq) result = result.filter(f => f.frequency.toString().includes(filters.freq));
+    setFiltered(result);
+  }, [filters, frequencies]);
 
-  const sortedSignals = [...filteredSignals].sort((a, b) => {
-    let aVal = a[sortColumn];
-    let bVal = b[sortColumn];
-    if (typeof aVal === "string") {
-      aVal = aVal.toLowerCase();
-      bVal = bVal.toLowerCase();
-    }
-    if (aVal < bVal) return sortAsc ? -1 : 1;
-    if (aVal > bVal) return sortAsc ? 1 : -1;
-    return 0;
-  });
-
-  const handleSort = (column) => {
-    if (sortColumn === column) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortColumn(column);
-      setSortAsc(true);
-    }
-  };
-
-  const saveSignal = () => {
-    const color = determineColor(newSignal.type);
-    push(ref(db, "signals"), {
-      frequency: parseFloat(newSignal.frequency),
-      city: newSignal.city,
-      lat: newSignal.lat,
-      lon: newSignal.lon,
-      type: newSignal.type,
-      description: newSignal.description,
-      color,
-      timestamp: Date.now(),
+  const sortData = field => {
+    const isAsc = sortField === field ? !sortAsc : true;
+    const sorted = [...filtered].sort((a, b) => {
+      if (field === 'frequency') return isAsc ? a.frequency - b.frequency : b.frequency - a.frequency;
+      return isAsc ? a[field].localeCompare(b[field]) : b[field].localeCompare(a[field]);
     });
-    clearForm();
+    setSortField(field);
+    setSortAsc(isAsc);
+    setFiltered(sorted);
   };
 
-  const clearForm = () => {
-    setNewSignal({
-      frequency: "",
-      city: "",
-      lat: "",
-      lon: "",
-      type: "",
-      description: ""
-    });
-    setShowForm(false);
-  };
-
-  const handleMapClick = (latlng) => {
-    if (window.confirm("Create new frequency here?")) {
-      setNewSignal({ ...newSignal, lat: latlng.lat, lon: latlng.lng });
-      setShowForm(true);
-    }
-  };
-
-  const sortIndicator = (col) => {
-    if (sortColumn !== col) return "";
-    return sortAsc ? " ↑" : " ↓";
+  const addFrequency = (latlng) => {
+    const newFreq = {
+      id: Date.now(),
+      frequency: 0,
+      city: 'New City',
+      type: 'unknown',
+      lat: latlng.lat,
+      lon: latlng.lng
+    };
+    const updated = [...frequencies, newFreq];
+    setFrequencies(updated);
+    setFiltered(updated);
+    axios.post('/api/frequencies', newFreq); // Save to server
   };
 
   return (
-    <div className="container">
-      <h2>📻 Radio Signal Database</h2>
-      <div className="corner-label">Managed by @mechanikcz</div>
-
-      {/* Map + Filters side-by-side */}
-      <div className="map-controls-wrapper">
-        <MapContainer center={[49.8, 15.5]} zoom={7} className="map">
+    <div className="fullscreen-container">
+      <div className="top-row">
+        <MapContainer center={[50.08, 14.44]} zoom={6} className="map">
           <TileLayer
-            attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution="© OpenStreetMap"
           />
-          <ClickHandler onClick={handleMapClick} />
-          {sortedSignals.map((s) => (
-            <Marker
-              key={s.id}
-              position={[s.lat, s.lon]}
-              icon={createColorIcon(s.color || determineColor(s.type))}
+          <ClickHandler onClick={addFrequency} />
+          {filtered.map(freq => (
+            <MarkerWithColor
+              key={freq.id}
+              position={[freq.lat, freq.lon]}
+              signalType={freq.type}
             >
               <Popup>
-                <b>{s.frequency} MHz</b>
-                <br />
-                {s.city} – {s.type}
-                <br />
-                <small>{s.description}</small>
+                <strong>{freq.frequency} MHz</strong><br />
+                {freq.city}<br />
+                Type: {freq.type}
               </Popup>
-            </Marker>
+            </MarkerWithColor>
           ))}
         </MapContainer>
 
-        <div className="controls-row">
-          <div className="filters-box">
-            <div className="filters-label">Filters:</div>
-            <div className="filters-inputs">
-              <input
-                value={filters.city}
-                onChange={(e) => setFilters({ ...filters, city: e.target.value })}
-                placeholder="City"
-              />
-              <input
-                value={filters.freq}
-                onChange={(e) => setFilters({ ...filters, freq: e.target.value })}
-                placeholder="Frequency"
-              />
-              <input
-                value={filters.type}
-                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                placeholder="Type"
-              />
-            </div>
-          </div>
-          <button
-            className="add-freq-btn"
-            onClick={() => setShowForm(!showForm)}
-          >
-            {showForm ? "Cancel" : "➕ Add Frequency"}
-          </button>
+        <div className="filters-box">
+          <div className="filters-label">Filters</div>
+          <input
+            type="text"
+            placeholder="City"
+            value={filters.city}
+            onChange={e => setFilters({ ...filters, city: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="Type"
+            value={filters.type}
+            onChange={e => setFilters({ ...filters, type: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="Frequency"
+            value={filters.freq}
+            onChange={e => setFilters({ ...filters, freq: e.target.value })}
+          />
         </div>
       </div>
-
-      {showForm && (
-        <div className="form">
-          <input
-            type="number"
-            step="any"
-            placeholder="Frequency (MHz)"
-            value={newSignal.frequency}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, frequency: e.target.value })
-            }
-          />
-          <input
-            placeholder="City"
-            value={newSignal.city}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, city: e.target.value })
-            }
-          />
-          <input
-            type="number"
-            step="any"
-            placeholder="Latitude"
-            value={newSignal.lat}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, lat: parseFloat(e.target.value) })
-            }
-          />
-          <input
-            type="number"
-            step="any"
-            placeholder="Longitude"
-            value={newSignal.lon}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, lon: parseFloat(e.target.value) })
-            }
-          />
-          <input
-            placeholder="Type"
-            value={newSignal.type}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, type: e.target.value })
-            }
-          />
-          <input
-            placeholder="Description"
-            value={newSignal.description}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, description: e.target.value })
-            }
-          />
-          <button onClick={saveSignal}>✅ Save</button>
-        </div>
-      )}
 
       <div className="table-container">
         <table>
           <thead>
             <tr>
-              <th onClick={() => handleSort("frequency")}>
-                Frequency (MHz){sortIndicator("frequency")}
-              </th>
-              <th onClick={() => handleSort("city")}>
-                City{sortIndicator("city")}
-              </th>
-              <th onClick={() => handleSort("lat")}>
-                Lat{sortIndicator("lat")}
-              </th>
-              <th onClick={() => handleSort("lon")}>
-                Lon{sortIndicator("lon")}
-              </th>
-              <th onClick={() => handleSort("type")}>
-                Type{sortIndicator("type")}
-              </th>
-              <th onClick={() => handleSort("description")}>
-                Description{sortIndicator("description")}
-              </th>
+              <th onClick={() => sortData('frequency')}>Frequency</th>
+              <th onClick={() => sortData('city')}>City</th>
+              <th onClick={() => sortData('type')}>Type</th>
             </tr>
           </thead>
           <tbody>
-            {sortedSignals.map((s) => {
-              const bgColor = s.color || determineColor(s.type);
-              return (
-                <tr key={s.id}>
-                  <td style={{ backgroundColor: bgColor, color: "white" }}>
-                    {s.frequency}
-                  </td>
-                  <td>{s.city}</td>
-                  <td>{s.lat.toFixed(4)}</td>
-                  <td>{s.lon.toFixed(4)}</td>
-                  <td>{s.type}</td>
-                  <td>{s.description}</td>
-                </tr>
-              );
-            })}
+            {filtered.map(freq => (
+              <tr key={freq.id}>
+                <td style={{ backgroundColor: colorMap[freq.type?.toUpperCase()] || 'gray' }}>
+                  {freq.frequency}
+                </td>
+                <td>{freq.city}</td>
+                <td>{freq.type}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
