@@ -1,8 +1,6 @@
 body {
   margin: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #111;
-  color: white;
 }
 
 .nav {
@@ -38,22 +36,21 @@ body {
   top: 10px;
   right: 10px;
   font-size: 12px;
-  color: #999;
+  color: #666;
   font-style: italic;
 }
 
 .controls-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: flex-end;
   max-width: 900px;
   margin: 0 auto 20px auto;
 }
 
 .filters-box {
   border: 1px solid #ccc;
-  background-color: #fff;
-  color: #000;
+  background-color: white;
   padding: 10px 15px;
   border-radius: 6px;
   flex-grow: 1;
@@ -81,10 +78,8 @@ body {
 }
 
 .add-freq-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 12px 18px;
+  margin-left: 20px;
+  padding: 10px 16px;
   font-size: 15px;
   cursor: pointer;
   border-radius: 6px;
@@ -92,7 +87,6 @@ body {
   background-color: #005bbb;
   color: white;
   font-weight: 600;
-  z-index: 1000;
   transition: background-color 0.25s ease;
 }
 
@@ -119,38 +113,30 @@ body {
 
 .table-container {
   overflow-x: auto;
-  margin-top: 20px;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid #555;
 }
 
 th {
   cursor: pointer;
-  background-color: #333;
+  background-color: #eee;
   padding: 8px;
   user-select: none;
-  border-bottom: 2px solid #777;
-  color: white;
 }
 
 td {
   padding: 8px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid #ccc;
+}
+
+tr:nth-child(even) {
+  background-color: #f9f9f9;
 }
 
 td:first-child {
   font-weight: bold;
   color: white;
-}
-
-tr:nth-child(even) {
-  background-color: #1a1a1a;
-}
-
-tr:nth-child(odd) {
-  background-color: #111;
 }
