@@ -51,9 +51,9 @@ body {
 }
 
 .filters-box {
-  border: 1px solid #ccc;
-  background-color: #fff;
-  color: #000;
+  border: 1px solid #333;
+  background-color: #111;  /* Match site background */
+  color: white;
   padding: 10px 15px;
   border-radius: 6px;
   flex-grow: 1;
@@ -64,21 +64,19 @@ body {
 .filters-label {
   font-weight: 600;
   margin-bottom: 8px;
-  color: #333;
-}
-
-.filters-inputs {
-  display: flex;
-  gap: 10px;
+  color: white; /* Match global text color */
 }
 
 .filters-inputs input {
   flex: 1;
   padding: 6px 10px;
-  border: 1px solid #bbb;
+  border: 1px solid #444;
   border-radius: 4px;
   font-size: 14px;
+  background-color: #111; /* Match site background */
+  color: white;
 }
+
 
 .add-freq-btn {
   position: fixed;
@@ -135,11 +133,18 @@ th {
   user-select: none;
   border-bottom: 2px solid #777;
   color: white;
+  border-right: 1px solid #444; /* Vertical line */
 }
 
 td {
   padding: 8px;
   border-bottom: 1px solid #444;
+  border-right: 1px solid #444; /* Vertical line */
+}
+
+th:last-child,
+td:last-child {
+  border-right: none; /* Prevent extra border on last column */
 }
 
 td:first-child {
