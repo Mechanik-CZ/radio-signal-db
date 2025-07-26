@@ -27,10 +27,15 @@ body {
   margin: auto;
 }
 
+.map-controls-wrapper {
+  display: flex;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+
 .map {
   height: 400px;
-  width: 100%;
-  margin-bottom: 20px;
+  flex: 1;
 }
 
 .corner-label {
@@ -44,44 +49,48 @@ body {
 
 .controls-row {
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: flex-start;
-  max-width: 900px;
-  margin: 0 auto 20px auto;
+  max-width: 240px;
+  flex-shrink: 0;
 }
 
 .filters-box {
   border: 1px solid #333;
-  background-color: #111;  /* Match site background */
+  background-color: #111;
   color: white;
   padding: 10px 15px;
   border-radius: 6px;
-  flex-grow: 1;
-  max-width: 75%;
   box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
 .filters-label {
   font-weight: 600;
   margin-bottom: 8px;
-  color: white; /* Match global text color */
+  color: white;
+}
+
+.filters-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .filters-inputs input {
-  flex: 1;
   padding: 6px 10px;
   border: 1px solid #444;
   border-radius: 4px;
   font-size: 14px;
-  background-color: #111; /* Match site background */
+  background-color: #111;
   color: white;
 }
 
-
 .add-freq-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
+  margin-top: 20px;
   padding: 12px 18px;
   font-size: 15px;
   cursor: pointer;
@@ -90,7 +99,6 @@ body {
   background-color: #005bbb;
   color: white;
   font-weight: 600;
-  z-index: 1000;
   transition: background-color 0.25s ease;
 }
 
@@ -133,18 +141,18 @@ th {
   user-select: none;
   border-bottom: 2px solid #777;
   color: white;
-  border-right: 1px solid #444; /* Vertical line */
+  border-right: 1px solid #444;
 }
 
 td {
   padding: 8px;
   border-bottom: 1px solid #444;
-  border-right: 1px solid #444; /* Vertical line */
+  border-right: 1px solid #444;
 }
 
 th:last-child,
 td:last-child {
-  border-right: none; /* Prevent extra border on last column */
+  border-right: none;
 }
 
 td:first-child {

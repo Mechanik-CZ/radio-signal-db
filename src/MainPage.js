@@ -7,17 +7,9 @@ import L from "leaflet";
 import "./App.css";
 
 // Define type categories
-const analogTypes = [
-  "nfm", "fm", "bfm", "am", "nam", "ssb", "usb", "lsb", "dsb"
-];
-
-const commonDigitals = [
-  "dmr", "d-star", "tetra", "tetrapol", "nxdn", "c4fm"
-];
-
-const simpleDigitals = [
-  "rtty", "ft8", "ft4", "packet", "digi"
-];
+const analogTypes = ["nfm", "fm", "bfm", "am", "nam", "ssb", "usb", "lsb", "dsb"];
+const commonDigitals = ["dmr", "d-star", "tetra", "tetrapol", "nxdn", "c4fm"];
+const simpleDigitals = ["rtty", "ft8", "ft4", "packet", "digi"];
 
 // Determine marker color based on type
 const determineColor = (type = "") => {
@@ -144,57 +136,59 @@ function MainPage() {
       <h2>📻 Radio Signal Database</h2>
       <div className="corner-label">Managed by @mechanikcz</div>
 
-      <MapContainer center={[49.8, 15.5]} zoom={7} className="map">
-        <TileLayer
-          attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <ClickHandler onClick={handleMapClick} />
-        {sortedSignals.map((s) => (
-          <Marker
-            key={s.id}
-            position={[s.lat, s.lon]}
-            icon={createColorIcon(s.color || determineColor(s.type))}
-          >
-            <Popup>
-              <b>{s.frequency} MHz</b>
-              <br />
-              {s.city} – {s.type}
-              <br />
-              <small>{s.description}</small>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      {/* Map + Filters side-by-side */}
+      <div className="map-controls-wrapper">
+        <MapContainer center={[49.8, 15.5]} zoom={7} className="map">
+          <TileLayer
+            attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <ClickHandler onClick={handleMapClick} />
+          {sortedSignals.map((s) => (
+            <Marker
+              key={s.id}
+              position={[s.lat, s.lon]}
+              icon={createColorIcon(s.color || determineColor(s.type))}
+            >
+              <Popup>
+                <b>{s.frequency} MHz</b>
+                <br />
+                {s.city} – {s.type}
+                <br />
+                <small>{s.description}</small>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
 
-      {/* Filters + Add Frequency Button row */}
-      <div className="controls-row">
-        <div className="filters-box">
-          <div className="filters-label">Filters:</div>
-          <div className="filters-inputs">
-            <input
-              value={filters.city}
-              onChange={(e) => setFilters({ ...filters, city: e.target.value })}
-              placeholder="City"
-            />
-            <input
-              value={filters.freq}
-              onChange={(e) => setFilters({ ...filters, freq: e.target.value })}
-              placeholder="Frequency"
-            />
-            <input
-              value={filters.type}
-              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-              placeholder="Type"
-            />
+        <div className="controls-row">
+          <div className="filters-box">
+            <div className="filters-label">Filters:</div>
+            <div className="filters-inputs">
+              <input
+                value={filters.city}
+                onChange={(e) => setFilters({ ...filters, city: e.target.value })}
+                placeholder="City"
+              />
+              <input
+                value={filters.freq}
+                onChange={(e) => setFilters({ ...filters, freq: e.target.value })}
+                placeholder="Frequency"
+              />
+              <input
+                value={filters.type}
+                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                placeholder="Type"
+              />
+            </div>
           </div>
+          <button
+            className="add-freq-btn"
+            onClick={() => setShowForm(!showForm)}
+          >
+            {showForm ? "Cancel" : "➕ Add Frequency"}
+          </button>
         </div>
-        <button
-          className="add-freq-btn"
-          onClick={() => setShowForm(!showForm)}
-        >
-          {showForm ? "Cancel" : "➕ Add Frequency"}
-        </button>
       </div>
 
       {showForm && (
