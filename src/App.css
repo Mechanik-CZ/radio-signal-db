@@ -1,131 +1,156 @@
-/* Base page style */
 body {
   margin: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f2f2f2;
-}
-
-/* Header at the top of the page */
-header {
-  padding: 10px 20px;
-  background-color: #222;
+  background-color: #111;
   color: white;
-  font-size: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
-/* Container for map display */
-.map-container {
+.nav {
+  background-color: #222;
+  padding: 10px 20px;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  margin-right: 20px;
+  font-weight: bold;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
+}
+
+.container {
+  padding: 20px;
+  max-width: 900px;
+  margin: auto;
+}
+
+.map {
   height: 400px;
   width: 100%;
+  margin-bottom: 20px;
 }
 
-/* General content wrapper */
-.container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 10px;
+.corner-label {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
 }
 
-/* Filters and add button container */
-.filter-bar {
+.controls-row {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  border: 1px solid lightgray;
-  background-color: white;
-  padding: 10px;
-  margin-bottom: 15px;
-  width: 100%;
+  align-items: flex-start;
+  max-width: 900px;
+  margin: 0 auto 20px auto;
+}
+
+.filters-box {
+  border: 1px solid #ccc;
+  background-color: #fff;
+  color: #000;
+  padding: 10px 15px;
+  border-radius: 6px;
+  flex-grow: 1;
+  max-width: 75%;
   box-sizing: border-box;
 }
 
-/* Grouping filters on the left side */
-.filter-box {
+.filters-label {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.filters-inputs {
   display: flex;
-  align-items: center;
   gap: 10px;
 }
 
-/* Filter labels */
-.filter-box label {
-  font-weight: bold;
-  margin-right: 5px;
-}
-
-/* Filter inputs */
-.filter-box input {
-  padding: 5px;
-  font-size: 14px;
-}
-
-/* General button style */
-button {
-  padding: 8px 12px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
+.filters-inputs input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #bbb;
   border-radius: 4px;
   font-size: 14px;
+}
+
+.add-freq-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 18px;
+  font-size: 15px;
+  cursor: pointer;
+  border-radius: 6px;
+  border: none;
+  background-color: #005bbb;
+  color: white;
+  font-weight: 600;
+  z-index: 1000;
+  transition: background-color 0.25s ease;
+}
+
+.add-freq-btn:hover {
+  background-color: #004799;
+}
+
+.form {
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+.form input {
+  display: block;
+  margin-bottom: 8px;
+  padding: 6px;
+  width: 200px;
+}
+
+.form button {
+  padding: 6px 12px;
   cursor: pointer;
 }
 
-button:hover {
-  background-color: #45a049;
+.table-container {
+  overflow-x: auto;
+  margin-top: 20px;
 }
 
-/* Frequency list table */
-.frequency-table {
+table {
   width: 100%;
   border-collapse: collapse;
-  background-color: white;
-  margin-bottom: 50px;
+  border: 1px solid #555;
 }
 
-/* Table header and data cells */
-.frequency-table th,
-.frequency-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: center;
-  font-size: 14px;
-}
-
-/* Table header style */
-.frequency-table th {
-  background-color: #f2f2f2;
+th {
   cursor: pointer;
+  background-color: #333;
+  padding: 8px;
+  user-select: none;
+  border-bottom: 2px solid #777;
+  color: white;
 }
 
-/* Zebra striping for table rows */
-.frequency-table tr:nth-child(even) {
-  background-color: #f9f9f9;
+td {
+  padding: 8px;
+  border-bottom: 1px solid #444;
 }
 
-/* Frequency background cell with dynamic color */
-.frequency-cell {
+td:first-child {
   font-weight: bold;
   color: white;
 }
 
-/* Small footer label */
-.footer-label {
-  font-size: 11px;
-  text-align: right;
-  margin-right: 5px;
-  color: #777;
-  margin-top: -15px;
+tr:nth-child(even) {
+  background-color: #1a1a1a;
 }
 
-/* Help page box */
-.help-page {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  font-size: 16px;
-  background-color: white;
-  border: 1px solid #ccc;
-  line-height: 1.6;
+tr:nth-child(odd) {
+  background-color: #111;
 }
