@@ -10,6 +10,7 @@ import "./App.css";
 const analogTypes = ["nfm", "fm", "bfm", "am", "nam", "ssb", "usb", "lsb", "dsb"];
 const commonDigitals = ["dmr", "d-star", "tetra", "tetrapol", "nxdn", "c4fm"];
 const simpleDigitals = ["rtty", "ft8", "ft4", "packet", "digi"];
+const ctu = ["ctu", "čtú", "čtu", "ctú" ];
 
 // Determine marker color based on type
 const determineColor = (type = "") => {
@@ -18,6 +19,7 @@ const determineColor = (type = "") => {
   if (commonDigitals.includes(t)) return "red";
   if (simpleDigitals.includes(t)) return "green";
   if (t === "unknown" || t === "?") return "grey";
+  if (ctu.includes(t)) return "violet"; //this is not included in /help/ site
   return "grey";
 };
 
