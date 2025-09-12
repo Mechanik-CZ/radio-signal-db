@@ -170,3 +170,55 @@ tr:nth-child(even) {
 tr:nth-child(odd) {
   background-color: #111;
 }
+
+.warning-box {
+  margin: 10px 0;
+  background-color: #b30000; /* deep red */
+  color: white;
+  border-radius: 10px;
+  padding: 8px 12px;
+  max-width: calc(100% - 40px);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+.warning-box .warning-header {
+  font-weight: 700;
+}
+.warning-box .warning-content {
+  margin-top: 8px;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+/* Vote controls inline on one row */
+.vote-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.vote-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  line-height: 1;
+  user-select: none;
+}
+.vote-btn.up { color: #0b8f1a; }    /* green */
+.vote-btn.down { color: #e53935; }  /* red */
+.vote-count {
+  min-width: 22px;
+  text-align: center;
+  font-weight: 600;
+  color: white;
+}
+.table-container td:last-child {
+  text-align: right;
+}
+
+/* small responsive fix: make sure map not collapsed */
+.map-controls-wrapper .map {
+  min-height: 360px;
+}
