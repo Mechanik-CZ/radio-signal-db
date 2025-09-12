@@ -1,6 +1,14 @@
 // MainPage.js
 import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Circle } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMapEvents,
+  Circle,
+  useMap,
+} from "react-leaflet";
 import { ref, push, onValue, runTransaction } from "firebase/database";
 import { db } from "./firebase";
 import "leaflet/dist/leaflet.css";
@@ -42,16 +50,36 @@ function ClickHandler({ onClick }) {
   return null;
 }
 
+// GPS button component
+function LocateButton() {
+  const map = useMap();
+  const locateUser = () => {
+    map.locate({ setView: true, maxZoom: 13 });
+  };
+  return (
+    <button className="gps-btn" onClick={locateUser}>
+      📍 My Location
+    </button>
+  );
+}
+
 function formatTimestamp(ms) {
   if (!ms) return "-";
   const d = new Date(Number(ms));
   const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${String(d.getFullYear()).slice(-2)}`;
+  return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}.${pad(
+    d.getMonth() + 1
+  )}.${String(d.getFullYear()).slice(-2)}`;
 }
 
 export default function MainPage() {
   const [signals, setSignals] = useState([]);
-  const [filters, setFilters] = useState({ city: "", freq: "", type: "" });
+  const [filters, setFilters] = useState({
+    city: "",
+    freq: "",
+    type: "",
+    description: "",
+  });
   const [sortColumn, setSortColumn] = useState("frequency");
   const [sortAsc, setSortAsc] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -77,10 +105,18 @@ export default function MainPage() {
   }, []);
 
   const filteredSignals = signals.filter((sig) => {
-    const matchCity = (sig.city || "").toLowerCase().includes(filters.city.toLowerCase());
-    const matchType = (sig.type || "").toLowerCase().includes(filters.type.toLowerCase());
-    const matchFreq = filters.freq === "" || String(sig.frequency).includes(filters.freq);
-    return matchCity && matchType && matchFreq;
+    const matchCity = (sig.city || "")
+      .toLowerCase()
+      .includes(filters.city.toLowerCase());
+    const matchType = (sig.type || "")
+      .toLowerCase()
+      .includes(filters.type.toLowerCase());
+    const matchFreq =
+      filters.freq === "" || String(sig.frequency).includes(filters.freq);
+    const matchDesc = (sig.description || "")
+      .toLowerCase()
+      .includes(filters.description.toLowerCase());
+    return matchCity && matchType && matchFreq && matchDesc;
   });
 
   const sortedSignals = [...filteredSignals].sort((a, b) => {
@@ -119,7 +155,15 @@ export default function MainPage() {
       timestamp: Date.now(),
       votes: { up: 0, down: 0 },
     });
-    setNewSignal({ frequency: "", city: "", lat: "", lon: "", type: "", description: "", radius_km: 5 });
+    setNewSignal({
+      frequency: "",
+      city: "",
+      lat: "",
+      lon: "",
+      type: "",
+      description: "",
+      radius_km: 5,
+    });
     setShowForm(false);
   };
 
@@ -131,7 +175,8 @@ export default function MainPage() {
     }
   };
 
-  const sortIndicator = (col) => (sortColumn === col ? (sortAsc ? " ↑" : " ↓") : "");
+  const sortIndicator = (col) =>
+    sortColumn === col ? (sortAsc ? " ↑" : " ↓") : "";
 
   // voting cooldown using localStorage (light anti-spam)
   const VOTE_COOLDOWN_MS = 30 * 1000;
@@ -144,7 +189,9 @@ export default function MainPage() {
     }
   };
   const markVoted = (id) => {
-    try { localStorage.setItem(`lastVote_${id}`, String(Date.now())); } catch {}
+    try {
+      localStorage.setItem(`lastVote_${id}`, String(Date.now()));
+    } catch {}
   };
 
   const vote = (id, dir) => {
@@ -165,18 +212,31 @@ export default function MainPage() {
       .catch((e) => console.error("Vote error", e));
   };
 
+  // group markers by lat/lon to detect collisions
+  const groupedSignals = {};
+  sortedSignals.forEach((s) => {
+    const key = `${Math.round(s.lat * 10000)},${Math.round(s.lon * 10000)}`;
+    if (!groupedSignals[key]) groupedSignals[key] = [];
+    groupedSignals[key].push(s);
+  });
+
   // find active signal for circle
   const activeSignal = signals.find((s) => s.id === activeSignalId);
 
   return (
     <div className="container">
-      {/* WARNING BOX only — DO NOT add nav here if you have global nav in App.js */}
+      {/* Warning */}
       <div style={{ marginTop: 8 }}>
-        <div className={`warning-box ${showWarning ? "open" : ""}`} onClick={() => setShowWarning(!showWarning)}>
+        <div
+          className={`warning-box ${showWarning ? "open" : ""}`}
+          onClick={() => setShowWarning(!showWarning)}
+        >
           <div className="warning-header">⚠️ Legal / Warning</div>
           {showWarning && (
             <div className="warning-content">
-              This website does not encourage piracy. Data shown here was collected from publicly available sources and is provided for informational purposes only. Use responsibly and follow local law.
+              This website does not encourage piracy. Data shown here was
+              collected from publicly available sources and is provided for
+              informational purposes only. Use responsibly and follow local law.
             </div>
           )}
         </div>
@@ -187,78 +247,208 @@ export default function MainPage() {
 
       <div className="map-controls-wrapper">
         <MapContainer center={[49.8, 15.5]} zoom={7} className="map">
-          <TileLayer attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <TileLayer
+            attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
           <ClickHandler onClick={handleMapClick} />
+          <LocateButton />
 
-          {sortedSignals.map((s) => (
+          {Object.values(groupedSignals).map((group, idx) => (
             <Marker
-              key={s.id}
-              position={[Number(s.lat) || 0, Number(s.lon) || 0]}
-              icon={createColorIcon(s.color || determineColor(s.type))}
-              eventHandlers={{ click: () => setActiveSignalId(s.id) }}
+              key={idx}
+              position={[Number(group[0].lat) || 0, Number(group[0].lon) || 0]}
+              icon={createColorIcon(
+                group[0].color || determineColor(group[0].type)
+              )}
             >
               <Popup>
-                <b>{s.frequency} MHz</b>
-                <br />
-                {s.city} – {s.type}
-                <br />
-                <small>{s.description}</small>
-                <br />
-                <small>Added: {formatTimestamp(s.timestamp)}</small>
-                <br />
-                <small>Votes: {(s.votes && s.votes.up) || 0} ↑ / {(s.votes && s.votes.down) || 0} ↓</small>
+                {group.length === 1 ? (
+                  <>
+                    <b>{group[0].frequency} MHz</b>
+                    <br />
+                    {group[0].city} – {group[0].type}
+                    <br />
+                    <small>{group[0].description}</small>
+                    <br />
+                    <small>Added: {formatTimestamp(group[0].timestamp)}</small>
+                    <br />
+                    <small>
+                      Votes: {(group[0].votes && group[0].votes.up) || 0} ↑ /{" "}
+                      {(group[0].votes && group[0].votes.down) || 0} ↓
+                    </small>
+                  </>
+                ) : (
+                  <div className="multi-popup">
+                    {group.map((s) => (
+                      <div key={s.id} className="multi-popup-item">
+                        <b>{s.frequency} MHz</b>
+                        <br />
+                        {s.city} – {s.type}
+                        <br />
+                        <small>{s.description}</small>
+                        <br />
+                        <small>Added: {formatTimestamp(s.timestamp)}</small>
+                        <br />
+                        <small>
+                          Votes: {(s.votes && s.votes.up) || 0} ↑ /{" "}
+                          {(s.votes && s.votes.down) || 0} ↓
+                        </small>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Popup>
             </Marker>
           ))}
 
-          {activeSignal && activeSignal.lat && activeSignal.lon && activeSignal.radius_km > 0 && (
-            <Circle
-              center={[Number(activeSignal.lat), Number(activeSignal.lon)]}
-              radius={Number(activeSignal.radius_km) * 1000}
-              pathOptions={{ color: activeSignal.color || determineColor(activeSignal.type), fillColor: activeSignal.color || determineColor(activeSignal.type), fillOpacity: 0.15 }}
-            />
-          )}
+          {activeSignal &&
+            activeSignal.lat &&
+            activeSignal.lon &&
+            activeSignal.radius_km > 0 && (
+              <Circle
+                center={[Number(activeSignal.lat), Number(activeSignal.lon)]}
+                radius={Number(activeSignal.radius_km) * 1000}
+                pathOptions={{
+                  color:
+                    activeSignal.color || determineColor(activeSignal.type),
+                  fillColor:
+                    activeSignal.color || determineColor(activeSignal.type),
+                  fillOpacity: 0.15,
+                }}
+              />
+            )}
         </MapContainer>
 
         <div className="controls-row">
           <div className="filters-box">
             <div className="filters-label">Filters:</div>
             <div className="filters-inputs">
-              <input value={filters.city} onChange={(e) => setFilters({ ...filters, city: e.target.value })} placeholder="City" />
-              <input value={filters.freq} onChange={(e) => setFilters({ ...filters, freq: e.target.value })} placeholder="Frequency" />
-              <input value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value })} placeholder="Type" />
+              <input
+                value={filters.city}
+                onChange={(e) =>
+                  setFilters({ ...filters, city: e.target.value })
+                }
+                placeholder="City"
+              />
+              <input
+                value={filters.freq}
+                onChange={(e) =>
+                  setFilters({ ...filters, freq: e.target.value })
+                }
+                placeholder="Frequency"
+              />
+              <input
+                value={filters.type}
+                onChange={(e) =>
+                  setFilters({ ...filters, type: e.target.value })
+                }
+                placeholder="Type"
+              />
+              <input
+                value={filters.description}
+                onChange={(e) =>
+                  setFilters({ ...filters, description: e.target.value })
+                }
+                placeholder="Description"
+              />
             </div>
           </div>
-          <button className="add-freq-btn" onClick={() => { setShowForm(!showForm); setActiveSignalId(null); }}>
+          <button
+            className="add-freq-btn"
+            onClick={() => {
+              setShowForm(!showForm);
+              setActiveSignalId(null);
+            }}
+          >
             {showForm ? "Cancel" : "➕ Add Frequency"}
           </button>
         </div>
       </div>
 
+      {/* Form */}
       {showForm && (
         <div className="form">
-          <input type="number" step="any" placeholder="Frequency (MHz)" value={newSignal.frequency} onChange={(e) => setNewSignal({ ...newSignal, frequency: e.target.value })} />
-          <input placeholder="City" value={newSignal.city} onChange={(e) => setNewSignal({ ...newSignal, city: e.target.value })} />
-          <input type="number" step="any" placeholder="Latitude" value={newSignal.lat} onChange={(e) => setNewSignal({ ...newSignal, lat: e.target.value })} />
-          <input type="number" step="any" placeholder="Longitude" value={newSignal.lon} onChange={(e) => setNewSignal({ ...newSignal, lon: e.target.value })} />
-          <input placeholder="Type" value={newSignal.type} onChange={(e) => setNewSignal({ ...newSignal, type: e.target.value })} />
-          <input placeholder="Description" value={newSignal.description} onChange={(e) => setNewSignal({ ...newSignal, description: e.target.value })} />
+          <input
+            type="number"
+            step="any"
+            placeholder="Frequency (MHz)"
+            value={newSignal.frequency}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, frequency: e.target.value })
+            }
+          />
+          <input
+            placeholder="City"
+            value={newSignal.city}
+            onChange={(e) => setNewSignal({ ...newSignal, city: e.target.value })}
+          />
+          <input
+            type="number"
+            step="any"
+            placeholder="Latitude"
+            value={newSignal.lat}
+            onChange={(e) => setNewSignal({ ...newSignal, lat: e.target.value })}
+          />
+          <input
+            type="number"
+            step="any"
+            placeholder="Longitude"
+            value={newSignal.lon}
+            onChange={(e) => setNewSignal({ ...newSignal, lon: e.target.value })}
+          />
+          <input
+            placeholder="Type"
+            value={newSignal.type}
+            onChange={(e) => setNewSignal({ ...newSignal, type: e.target.value })}
+          />
+          <input
+            placeholder="Description"
+            value={newSignal.description}
+            onChange={(e) =>
+              setNewSignal({ ...newSignal, description: e.target.value })
+            }
+          />
           <label style={{ marginTop: 6 }}>Radius (km, 1 - 80)</label>
-          <input type="number" min="1" max="80" step="1" value={newSignal.radius_km} onChange={(e) => setNewSignal({ ...newSignal, radius_km: Math.max(1, Math.min(80, Number(e.target.value))) })} />
+          <input
+            type="number"
+            min="1"
+            max="80"
+            step="1"
+            value={newSignal.radius_km}
+            onChange={(e) =>
+              setNewSignal({
+                ...newSignal,
+                radius_km: Math.max(
+                  1,
+                  Math.min(80, Number(e.target.value))
+                ),
+              })
+            }
+          />
           <button onClick={saveSignal}>✅ Save</button>
         </div>
       )}
 
+      {/* Table */}
       <div className="table-container">
         <table>
           <thead>
             <tr>
-              <th onClick={() => handleSort("frequency")}>Frequency (MHz){sortIndicator("frequency")}</th>
-              <th onClick={() => handleSort("city")}>City{sortIndicator("city")}</th>
+              <th onClick={() => handleSort("frequency")}>
+                Frequency (MHz){sortIndicator("frequency")}
+              </th>
+              <th onClick={() => handleSort("city")}>
+                City{sortIndicator("city")}
+              </th>
               <th onClick={() => handleSort("lat")}>Lat{sortIndicator("lat")}</th>
               <th onClick={() => handleSort("lon")}>Lon{sortIndicator("lon")}</th>
-              <th onClick={() => handleSort("type")}>Type{sortIndicator("type")}</th>
-              <th onClick={() => handleSort("description")}>Description{sortIndicator("description")}</th>
+              <th onClick={() => handleSort("type")}>
+                Type{sortIndicator("type")}
+              </th>
+              <th onClick={() => handleSort("description")}>
+                Description{sortIndicator("description")}
+              </th>
               <th>Added</th>
               <th style={{ width: 160 }}>Votes</th>
             </tr>
@@ -268,19 +458,45 @@ export default function MainPage() {
               const bgColor = s.color || determineColor(s.type);
               return (
                 <tr key={s.id}>
-                  <td style={{ backgroundColor: bgColor, color: "white", fontWeight: 700 }}>{s.frequency}</td>
+                  <td
+                    style={{
+                      backgroundColor: bgColor,
+                      color: "white",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {s.frequency}
+                  </td>
                   <td>{s.city || "-"}</td>
                   <td>{s.lat ? Number(s.lat).toFixed(4) : "-"}</td>
                   <td>{s.lon ? Number(s.lon).toFixed(4) : "-"}</td>
                   <td>{s.type || "-"}</td>
                   <td>{s.description || "-"}</td>
-                  <td style={{ whiteSpace: "nowrap" }}>{formatTimestamp(s.timestamp)}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    {formatTimestamp(s.timestamp)}
+                  </td>
                   <td>
                     <div className="vote-controls">
-                      <button className="vote-btn up" onClick={() => vote(s.id, "up")} title="Upvote">▲</button>
-                      <div className="vote-count">{(s.votes && s.votes.up) || 0}</div>
-                      <button className="vote-btn down" onClick={() => vote(s.id, "down")} title="Downvote">▼</button>
-                      <div className="vote-count">{(s.votes && s.votes.down) || 0}</div>
+                      <button
+                        className="vote-btn up"
+                        onClick={() => vote(s.id, "up")}
+                        title="Upvote"
+                      >
+                        ▲
+                      </button>
+                      <div className="vote-count">
+                        {(s.votes && s.votes.up) || 0}
+                      </div>
+                      <button
+                        className="vote-btn down"
+                        onClick={() => vote(s.id, "down")}
+                        title="Downvote"
+                      >
+                        ▼
+                      </button>
+                      <div className="vote-count">
+                        {(s.votes && s.votes.down) || 0}
+                      </div>
                     </div>
                   </td>
                 </tr>

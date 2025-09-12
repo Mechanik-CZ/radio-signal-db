@@ -222,3 +222,30 @@ tr:nth-child(odd) {
 .map-controls-wrapper .map {
   min-height: 360px;
 }
+
+.gps-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.gps-btn:hover {
+  background: #f0f0f0;
+}
+
+.multi-popup {
+  display: flex;
+  gap: 20px;
+}
+
+.multi-popup-item {
+  min-width: 150px;
+  border-left: 1px solid #ddd;
+  padding-left: 10px;
+}
