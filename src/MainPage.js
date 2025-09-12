@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Circle } from "react-leaflet";
-import { ref, push, onValue, runTransaction } from "firebase/database";
+import { ref, push, onValue, update } from "firebase/database";
 import { db } from "./firebase";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -14,12 +14,12 @@ const ctu = ["ctu", "čtú", "čtu", "ctú"];
 
 // Determine marker color based on type
 const determineColor = (type = "") => {
-  const t = (type || "").toLowerCase();
+  const t = type.toLowerCase();
   if (analogTypes.includes(t)) return "blue";
   if (commonDigitals.includes(t)) return "red";
   if (simpleDigitals.includes(t)) return "green";
   if (t === "unknown" || t === "?") return "grey";
-  if (ctu.includes(t)) return "violet"; //this is not included in /help/ site
+  if (ctu.includes(t)) return "violet";
   return "grey";
 };
 
@@ -42,19 +42,13 @@ function ClickHandler({ onClick }) {
   return null;
 }
 
-function formatTimestamp(ms) {
-  if (!ms) return "-";
-  const d = new Date(Number(ms));
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}.${pad(d.getMonth()+1)}.${String(d.getFullYear()).slice(-2)}`;
-}
-
 function MainPage() {
   const [signals, setSignals] = useState([]);
   const [filters, setFilters] = useState({ city: "", freq: "", type: "" });
   const [sortColumn, setSortColumn] = useState("frequency");
   const [sortAsc, setSortAsc] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
   const [newSignal, setNewSignal] = useState({
     frequency: "",
     city: "",
@@ -62,10 +56,9 @@ function MainPage() {
     lon: "",
     type: "",
     description: "",
-    radius_km: 5,
+    radius: 10, // default radius km
   });
-  const [activeSignalId, setActiveSignalId] = useState(null);
-  const [showWarning, setShowWarning] = useState(false);
+  const [selectedSignalId, setSelectedSignalId] = useState(null);
 
   useEffect(() => {
     const signalsRef = ref(db, "signals");
@@ -77,8 +70,8 @@ function MainPage() {
   }, []);
 
   const filteredSignals = signals.filter((sig) => {
-    const matchCity = (sig.city || "").toLowerCase().includes(filters.city.toLowerCase());
-    const matchType = (sig.type || "").toLowerCase().includes(filters.type.toLowerCase());
+    const matchCity = sig.city?.toLowerCase().includes(filters.city.toLowerCase());
+    const matchType = sig.type?.toLowerCase().includes(filters.type.toLowerCase());
     const matchFreq = filters.freq === "" || String(sig.frequency).includes(filters.freq);
     return matchCity && matchType && matchFreq;
   });
@@ -86,8 +79,6 @@ function MainPage() {
   const sortedSignals = [...filteredSignals].sort((a, b) => {
     let aVal = a[sortColumn];
     let bVal = b[sortColumn];
-    if (aVal == null) aVal = "";
-    if (bVal == null) bVal = "";
     if (typeof aVal === "string") {
       aVal = aVal.toLowerCase();
       bVal = bVal.toLowerCase();
@@ -111,20 +102,28 @@ function MainPage() {
     push(ref(db, "signals"), {
       frequency: parseFloat(newSignal.frequency),
       city: newSignal.city,
-      lat: parseFloat(newSignal.lat),
-      lon: parseFloat(newSignal.lon),
+      lat: newSignal.lat,
+      lon: newSignal.lon,
       type: newSignal.type,
       description: newSignal.description,
+      radius: parseFloat(newSignal.radius) || 10,
       color,
-      radius_km: Number(newSignal.radius_km) || 0,
       timestamp: Date.now(),
-      votes: { up: 0, down: 0 },
+      votes: 0,
     });
     clearForm();
   };
 
   const clearForm = () => {
-    setNewSignal({ frequency: "", city: "", lat: "", lon: "", type: "", description: "", radius_km: 5 });
+    setNewSignal({
+      frequency: "",
+      city: "",
+      lat: "",
+      lon: "",
+      type: "",
+      description: "",
+      radius: 10,
+    });
     setShowForm(false);
   };
 
@@ -132,8 +131,6 @@ function MainPage() {
     if (window.confirm("Create new frequency here?")) {
       setNewSignal({ ...newSignal, lat: latlng.lat, lon: latlng.lng });
       setShowForm(true);
-      // make sure active circle is cleared
-      setActiveSignalId(null);
     }
   };
 
@@ -142,60 +139,33 @@ function MainPage() {
     return sortAsc ? " ↑" : " ↓";
   };
 
-  // Voting with small anti-spam (30s) enforced via localStorage
-  const voteDelayMs = 30 * 1000;
-  const canVote = (id) => {
-    try {
-      const last = Number(localStorage.getItem(`lastVote_${id}`) || 0);
-      return Date.now() - last > voteDelayMs;
-    } catch (e) {
-      return true;
-    }
-  };
-
-  const recordVoteLocal = (id) => {
-    try { localStorage.setItem(`lastVote_${id}`, String(Date.now())); } catch(e){}
-  };
-
-  const vote = async (id, type) => {
-    if (!canVote(id)){
-      alert('Please wait a bit before voting again.');
-      return;
-    }
-    const votesRef = ref(db, `signals/${id}/votes`);
-    // use transaction to increment safely
-    runTransaction(votesRef, (current) => {
-      if (current == null) return { up: type === 'up' ? 1 : 0, down: type === 'down' ? 1 : 0 };
-      if (type === 'up') current.up = (current.up || 0) + 1;
-      if (type === 'down') current.down = (current.down || 0) + 1;
-      return current;
-    }).then(() => {
-      recordVoteLocal(id);
-    }).catch((e)=>{
-      console.error('Vote error', e);
-    });
+  const formatTimestamp = (ts) => {
+    const date = new Date(ts);
+    return date.toLocaleString();
   };
 
   return (
     <div className="container">
-      <h2>📻 Radio Signal Database</h2>
-
-      <div className="top-controls">
-        <nav className="nav">
-          <a className="nav-link" href="#">Home</a>
-          <a className="nav-link" href="#help">Help</a>
+      <header>
+        <nav>
+          <a href="#">Home</a>
+          <a href="#">Help</a>
         </nav>
 
-        <div className={`warning-box ${showWarning ? 'open' : ''}`} onClick={() => setShowWarning(!showWarning)}>
-          <div className="warning-title">⚠️ Legal / Warning</div>
+        {/* Warning box */}
+        <div className="warning-box">
+          <div className="warning-header" onClick={() => setShowWarning(!showWarning)}>
+            ⚠️ Legal / Warning
+          </div>
           {showWarning && (
             <div className="warning-content">
-              This website does not encourage piracy. All data shown here was collected from public sources and is provided for informational purposes only. Use responsibly and obey local laws.
+              This website does not encourage piracy; all data was publicly available.
             </div>
           )}
         </div>
-      </div>
+      </header>
 
+      <h2>📻 Radio Signal Database</h2>
       <div className="corner-label">Managed by @mechanikcz</div>
 
       <div className="map-controls-wrapper">
@@ -205,13 +175,14 @@ function MainPage() {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <ClickHandler onClick={handleMapClick} />
-
           {sortedSignals.map((s) => (
             <Marker
               key={s.id}
-              position={[s.lat || 0, s.lon || 0]}
+              position={[s.lat, s.lon]}
               icon={createColorIcon(s.color || determineColor(s.type))}
-              eventHandlers={{ click: () => setActiveSignalId(s.id) }}
+              eventHandlers={{
+                click: () => setSelectedSignalId(s.id),
+              }}
             >
               <Popup>
                 <b>{s.frequency} MHz</b>
@@ -219,27 +190,22 @@ function MainPage() {
                 {s.city} – {s.type}
                 <br />
                 <small>{s.description}</small>
-                <br />
-                <small>Added: {formatTimestamp(s.timestamp)}</small>
-                <br />
-                <small>Votes: {(s.votes && s.votes.up) || 0} ↑ / {(s.votes && s.votes.down) || 0} ↓</small>
               </Popup>
             </Marker>
           ))}
 
-          {/* Show only the active signal radius as a translucent circle */}
-          {activeSignalId && (() => {
-            const sig = signals.find((x) => x.id === activeSignalId);
-            if (!sig || !sig.lat || !sig.lon || !sig.radius_km) return null;
-            const color = sig.color || determineColor(sig.type);
-            return (
-              <Circle
-                center={[sig.lat, sig.lon]}
-                radius={(Number(sig.radius_km) || 0) * 1000}
-                pathOptions={{ color, fillColor: color, fillOpacity: 0.15 }}
-              />
-            );
-          })()}
+          {/* Show circle radius only for selected signal */}
+          {sortedSignals.map(
+            (s) =>
+              s.id === selectedSignalId && (
+                <Circle
+                  key={`circle-${s.id}`}
+                  center={[s.lat, s.lon]}
+                  radius={(s.radius || 10) * 1000}
+                  pathOptions={{ color: s.color || determineColor(s.type), opacity: 0.3 }}
+                />
+              )
+          )}
         </MapContainer>
 
         <div className="controls-row">
@@ -263,10 +229,7 @@ function MainPage() {
               />
             </div>
           </div>
-          <button
-            className="add-freq-btn"
-            onClick={() => { setShowForm(!showForm); setActiveSignalId(null); }}
-          >
+          <button className="add-freq-btn" onClick={() => setShowForm(!showForm)}>
             {showForm ? "Cancel" : "➕ Add Frequency"}
           </button>
         </div>
@@ -310,17 +273,12 @@ function MainPage() {
             value={newSignal.description}
             onChange={(e) => setNewSignal({ ...newSignal, description: e.target.value })}
           />
-
-          <label style={{ marginTop: 6 }}>Radius (km, 1 - 80)</label>
           <input
             type="number"
-            min="1"
-            max="80"
-            step="1"
-            value={newSignal.radius_km}
-            onChange={(e) => setNewSignal({ ...newSignal, radius_km: Math.max(1, Math.min(80, Number(e.target.value))) })}
+            placeholder="Radius (km)"
+            value={newSignal.radius}
+            onChange={(e) => setNewSignal({ ...newSignal, radius: e.target.value })}
           />
-
           <button onClick={saveSignal}>✅ Save</button>
         </div>
       )}
@@ -332,23 +290,14 @@ function MainPage() {
               <th onClick={() => handleSort("frequency")}>
                 Frequency (MHz){sortIndicator("frequency")}
               </th>
-              <th onClick={() => handleSort("city")}>
-                City{sortIndicator("city")}
-              </th>
-              <th onClick={() => handleSort("lat")}>
-                Lat{sortIndicator("lat")}
-              </th>
-              <th onClick={() => handleSort("lon")}>
-                Lon{sortIndicator("lon")}
-              </th>
-              <th onClick={() => handleSort("type")}>
-                Type{sortIndicator("type")}
-              </th>
+              <th onClick={() => handleSort("city")}>City{sortIndicator("city")}</th>
+              <th onClick={() => handleSort("lat")}>Lat{sortIndicator("lat")}</th>
+              <th onClick={() => handleSort("lon")}>Lon{sortIndicator("lon")}</th>
+              <th onClick={() => handleSort("type")}>Type{sortIndicator("type")}</th>
               <th onClick={() => handleSort("description")}>
                 Description{sortIndicator("description")}
               </th>
-              <th>Added</th>
-              <th style={{ width: 140 }}>Votes</th>
+              <th>Timestamp</th>
             </tr>
           </thead>
           <tbody>
@@ -356,23 +305,13 @@ function MainPage() {
               const bgColor = s.color || determineColor(s.type);
               return (
                 <tr key={s.id}>
-                  <td style={{ backgroundColor: bgColor, color: "white", fontWeight: 700 }}>
-                    {s.frequency}
-                  </td>
+                  <td style={{ backgroundColor: bgColor, color: "white" }}>{s.frequency}</td>
                   <td>{s.city}</td>
-                  <td>{s.lat ? Number(s.lat).toFixed(4) : "-"}</td>
-                  <td>{s.lon ? Number(s.lon).toFixed(4) : "-"}</td>
+                  <td>{s.lat.toFixed(4)}</td>
+                  <td>{s.lon.toFixed(4)}</td>
                   <td>{s.type}</td>
                   <td>{s.description}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{formatTimestamp(s.timestamp)}</td>
-                  <td>
-                    <div className="vote-controls">
-                      <button className="vote-btn up" onClick={() => vote(s.id, 'up')}>▲</button>
-                      <div className="vote-count">{(s.votes && s.votes.up) || 0}</div>
-                      <button className="vote-btn down" onClick={() => vote(s.id, 'down')}>▼</button>
-                      <div className="vote-count">{(s.votes && s.votes.down) || 0}</div>
-                    </div>
-                  </td>
+                  <td>{formatTimestamp(s.timestamp)}</td>
                 </tr>
               );
             })}
