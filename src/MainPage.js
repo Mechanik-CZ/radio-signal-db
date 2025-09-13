@@ -5,9 +5,7 @@ import {
   TileLayer,
   Marker,
   Popup,
-  useMapEvents,
   Circle,
-  useMap,
 } from "react-leaflet";
 import { ref, push, onValue, runTransaction } from "firebase/database";
 import { db } from "./firebase";
@@ -31,257 +29,151 @@ const determineColor = (type = "") => {
   return "grey";
 };
 
-const createColorIcon = (color = "grey") =>
+// custom marker icons
+const createColorIcon = (color) =>
   new L.Icon({
-    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
-    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
+    iconUrl: `https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|${color}`,
+    iconSize: [21, 34],
+    iconAnchor: [10, 34],
     popupAnchor: [1, -34],
-    shadowSize: [41, 41],
   });
 
-function ClickHandler({ onClick }) {
-  useMapEvents({
-    click(e) {
-      onClick(e.latlng);
-    },
-  });
-  return null;
-}
-
-// GPS button component
-function LocateButton() {
-  const map = useMap();
-  const locateUser = () => {
-    map.locate({ setView: true, maxZoom: 13 });
-  };
-  return (
-    <button className="gps-btn" onClick={locateUser}>
-      📍 My Location
-    </button>
-  );
-}
-
-function formatTimestamp(ms) {
-  if (!ms) return "-";
-  const d = new Date(Number(ms));
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}.${pad(
-    d.getMonth() + 1
-  )}.${String(d.getFullYear()).slice(-2)}`;
-}
-
-export default function MainPage() {
+function MainPage() {
   const [signals, setSignals] = useState([]);
-  const [filters, setFilters] = useState({
-    city: "",
-    freq: "",
-    type: "",
-    description: "",
-  });
-  const [sortColumn, setSortColumn] = useState("frequency");
-  const [sortAsc, setSortAsc] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [showWarning, setShowWarning] = useState(false);
-  const [newSignal, setNewSignal] = useState({
-    frequency: "",
-    city: "",
-    lat: "",
-    lon: "",
-    type: "",
-    description: "",
-    radius_km: 5,
-  });
   const [activeSignalId, setActiveSignalId] = useState(null);
 
+  // fetch signals
   useEffect(() => {
     const signalsRef = ref(db, "signals");
-    return onValue(signalsRef, (snapshot) => {
+    onValue(signalsRef, (snapshot) => {
       const data = snapshot.val() || {};
-      const list = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+      const list = Object.keys(data).map((key) => ({ id: key, ...data[key] }));
       setSignals(list);
     });
   }, []);
 
-  const filteredSignals = signals.filter((sig) => {
-    const matchCity = (sig.city || "")
-      .toLowerCase()
-      .includes(filters.city.toLowerCase());
-    const matchType = (sig.type || "")
-      .toLowerCase()
-      .includes(filters.type.toLowerCase());
-    const matchFreq =
-      filters.freq === "" || String(sig.frequency).includes(filters.freq);
-    const matchDesc = (sig.description || "")
-      .toLowerCase()
-      .includes(filters.description.toLowerCase());
-    return matchCity && matchType && matchFreq && matchDesc;
-  });
+  // group overlapping markers
+  const groupSignals = () => {
+    const groups = [];
+    const used = new Set();
 
-  const sortedSignals = [...filteredSignals].sort((a, b) => {
-    let aVal = a[sortColumn];
-    let bVal = b[sortColumn];
-    if (aVal == null) aVal = "";
-    if (bVal == null) bVal = "";
-    if (typeof aVal === "string") {
-      aVal = aVal.toLowerCase();
-      bVal = bVal.toLowerCase();
-    }
-    if (aVal < bVal) return sortAsc ? -1 : 1;
-    if (aVal > bVal) return sortAsc ? 1 : -1;
-    return 0;
-  });
+    signals.forEach((s, i) => {
+      if (used.has(s.id)) return;
+      const group = [s];
+      used.add(s.id);
 
-  const handleSort = (column) => {
-    if (sortColumn === column) setSortAsc(!sortAsc);
-    else {
-      setSortColumn(column);
-      setSortAsc(true);
-    }
-  };
+      signals.forEach((other, j) => {
+        if (i !== j && !used.has(other.id)) {
+          const dist = getDistanceFromLatLonInKm(
+            s.lat,
+            s.lon,
+            other.lat,
+            other.lon
+          );
+          if (dist < 0.1) {
+            group.push(other);
+            used.add(other.id);
+          }
+        }
+      });
 
-  const saveSignal = () => {
-    const color = determineColor(newSignal.type);
-    push(ref(db, "signals"), {
-      frequency: parseFloat(newSignal.frequency),
-      city: newSignal.city,
-      lat: Number(newSignal.lat) || 0,
-      lon: Number(newSignal.lon) || 0,
-      type: newSignal.type,
-      description: newSignal.description,
-      color,
-      radius_km: Number(newSignal.radius_km) || 0,
-      timestamp: Date.now(),
-      votes: { up: 0, down: 0 },
+      groups.push(group);
     });
-    setNewSignal({
-      frequency: "",
-      city: "",
-      lat: "",
-      lon: "",
-      type: "",
-      description: "",
-      radius_km: 5,
-    });
-    setShowForm(false);
+
+    return groups;
   };
 
-  const handleMapClick = (latlng) => {
-    if (window.confirm("Create new frequency here?")) {
-      setNewSignal({ ...newSignal, lat: latlng.lat, lon: latlng.lng });
-      setShowForm(true);
-      setActiveSignalId(null);
-    }
+  const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  const sortIndicator = (col) =>
-    sortColumn === col ? (sortAsc ? " ↑" : " ↓") : "";
-
-  // voting cooldown using localStorage (light anti-spam)
-  const VOTE_COOLDOWN_MS = 30 * 1000;
-  const canVote = (id) => {
-    try {
-      const last = Number(localStorage.getItem(`lastVote_${id}`) || 0);
-      return Date.now() - last > VOTE_COOLDOWN_MS;
-    } catch {
-      return true;
-    }
-  };
-  const markVoted = (id) => {
-    try {
-      localStorage.setItem(`lastVote_${id}`, String(Date.now()));
-    } catch {}
+  // voting logic
+  const handleVote = (signalId, type) => {
+    const signalRef = ref(db, `signals/${signalId}/votes/${type}`);
+    runTransaction(signalRef, (current) => (current || 0) + 1);
   };
 
-  const vote = (id, dir) => {
-    if (!canVote(id)) {
-      alert("Please wait a little before voting again.");
-      return;
-    }
-    const votesRef = ref(db, `signals/${id}/votes`);
-    runTransaction(votesRef, (current) => {
-      if (current == null) {
-        return dir === "up" ? { up: 1, down: 0 } : { up: 0, down: 1 };
-      }
-      if (dir === "up") current.up = (current.up || 0) + 1;
-      else current.down = (current.down || 0) + 1;
-      return current;
-    })
-      .then(() => markVoted(id))
-      .catch((e) => console.error("Vote error", e));
+  // format timestamp
+  const formatTimestamp = (ts) => {
+    if (!ts) return "unknown";
+    const date = new Date(ts);
+    return date.toLocaleString();
   };
 
-  // group markers by lat/lon to detect collisions
-  const groupedSignals = {};
-  sortedSignals.forEach((s) => {
-    const key = `${Math.round(s.lat * 10000)},${Math.round(s.lon * 10000)}`;
-    if (!groupedSignals[key]) groupedSignals[key] = [];
-    groupedSignals[key].push(s);
-  });
-
-  // find active signal for circle
+  const groups = groupSignals();
   const activeSignal = signals.find((s) => s.id === activeSignalId);
 
   return (
-    <div className="container">
-      {/* Warning */}
-      <div style={{ marginTop: 8 }}>
-        <div
-          className={`warning-box ${showWarning ? "open" : ""}`}
-          onClick={() => setShowWarning(!showWarning)}
-        >
-          <div className="warning-header">⚠️ Legal / Warning</div>
-          {showWarning && (
-            <div className="warning-content">
-              This website does not encourage piracy. Data shown here was
-              collected from publicly available sources and is provided for
-              informational purposes only. Use responsibly and follow local law.
-            </div>
-          )}
-        </div>
-      </div>
+    <div className="map-container">
+      <MapContainer
+        center={[49.8, 15.5]}
+        zoom={8}
+        style={{ height: "100vh", width: "100%" }}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap contributors"
+        />
 
-      <h2>📻 Radio Signal Database</h2>
-      <div className="corner-label">Managed by @mechanikcz</div>
-
-      <div className="map-controls-wrapper">
-        <MapContainer center={[49.8, 15.5]} zoom={7} className="map">
-          <TileLayer
-            attribution='&copy; <a href="https://osm.org">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <ClickHandler onClick={handleMapClick} />
-          <LocateButton />
-
-          {Object.values(groupedSignals).map((group, idx) => (
-            <Marker
-              key={idx}
-              position={[Number(group[0].lat) || 0, Number(group[0].lon) || 0]}
-              icon={createColorIcon(
-                group[0].color || determineColor(group[0].type)
-              )}
-            >
-              <Popup>
-                {group.length === 1 ? (
-                  <>
-                    <b>{group[0].frequency} MHz</b>
-                    <br />
-                    {group[0].city} – {group[0].type}
-                    <br />
-                    <small>{group[0].description}</small>
-                    <br />
-                    <small>Added: {formatTimestamp(group[0].timestamp)}</small>
-                    <br />
-                    <small>
-                      Votes: {(group[0].votes && group[0].votes.up) || 0} ↑ /{" "}
-                      {(group[0].votes && group[0].votes.down) || 0} ↓
-                    </small>
-                  </>
-                ) : (
-                  <div className="multi-popup">
-                    {group.map((s) => (
-                      <div key={s.id} className="multi-popup-item">
+        {groups.map((group, idx) => (
+          <Marker
+            key={idx}
+            position={[Number(group[0].lat) || 0, Number(group[0].lon) || 0]}
+            icon={createColorIcon(
+              group[0].color || determineColor(group[0].type)
+            )}
+            eventHandlers={{
+              click: () => setActiveSignalId(group[0].id),
+            }}
+          >
+            <Popup>
+              {group.length === 1 ? (
+                <>
+                  <b>{group[0].frequency} MHz</b>
+                  <br />
+                  {group[0].city} – {group[0].type}
+                  <br />
+                  <small>{group[0].description}</small>
+                  <br />
+                  <small>Added: {formatTimestamp(group[0].timestamp)}</small>
+                  <br />
+                  <small>
+                    Votes: {(group[0].votes && group[0].votes.up) || 0} ↑ /{" "}
+                    {(group[0].votes && group[0].votes.down) || 0} ↓
+                  </small>
+                  <br />
+                  <button onClick={() => handleVote(group[0].id, "up")}>
+                    👍
+                  </button>
+                  <button onClick={() => handleVote(group[0].id, "down")}>
+                    👎
+                  </button>
+                  <br />
+                  <small>Radius: {group[0].radius_km} km</small>
+                </>
+              ) : (
+                <div className="multi-popup">
+                  {group.map((s) => {
+                    const bgColor = s.color || determineColor(s.type);
+                    return (
+                      <div
+                        key={s.id}
+                        className="multi-popup-item"
+                        style={{
+                          borderLeft: `6px solid ${bgColor}`,
+                        }}
+                        onClick={() => setActiveSignalId(s.id)}
+                      >
                         <b>{s.frequency} MHz</b>
                         <br />
                         {s.city} – {s.type}
@@ -294,217 +186,37 @@ export default function MainPage() {
                           Votes: {(s.votes && s.votes.up) || 0} ↑ /{" "}
                           {(s.votes && s.votes.down) || 0} ↓
                         </small>
+                        <br />
+                        <button onClick={() => handleVote(s.id, "up")}>
+                          👍
+                        </button>
+                        <button onClick={() => handleVote(s.id, "down")}>
+                          👎
+                        </button>
+                        <br />
+                        <small>Radius: {s.radius_km} km</small>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </Popup>
-            </Marker>
-          ))}
+                    );
+                  })}
+                </div>
+              )}
+            </Popup>
+          </Marker>
+        ))}
 
-          {activeSignal &&
-            activeSignal.lat &&
-            activeSignal.lon &&
-            activeSignal.radius_km > 0 && (
-              <Circle
-                center={[Number(activeSignal.lat), Number(activeSignal.lon)]}
-                radius={Number(activeSignal.radius_km) * 1000}
-                pathOptions={{
-                  color:
-                    activeSignal.color || determineColor(activeSignal.type),
-                  fillColor:
-                    activeSignal.color || determineColor(activeSignal.type),
-                  fillOpacity: 0.15,
-                }}
-              />
-            )}
-        </MapContainer>
-
-        <div className="controls-row">
-          <div className="filters-box">
-            <div className="filters-label">Filters:</div>
-            <div className="filters-inputs">
-              <input
-                value={filters.city}
-                onChange={(e) =>
-                  setFilters({ ...filters, city: e.target.value })
-                }
-                placeholder="City"
-              />
-              <input
-                value={filters.freq}
-                onChange={(e) =>
-                  setFilters({ ...filters, freq: e.target.value })
-                }
-                placeholder="Frequency"
-              />
-              <input
-                value={filters.type}
-                onChange={(e) =>
-                  setFilters({ ...filters, type: e.target.value })
-                }
-                placeholder="Type"
-              />
-              <input
-                value={filters.description}
-                onChange={(e) =>
-                  setFilters({ ...filters, description: e.target.value })
-                }
-                placeholder="Description"
-              />
-            </div>
-          </div>
-          <button
-            className="add-freq-btn"
-            onClick={() => {
-              setShowForm(!showForm);
-              setActiveSignalId(null);
+        {activeSignal && activeSignal.radius_km && (
+          <Circle
+            center={[Number(activeSignal.lat), Number(activeSignal.lon)]}
+            radius={activeSignal.radius_km * 1000}
+            pathOptions={{
+              color: activeSignal.color || determineColor(activeSignal.type),
+              fillOpacity: 0.15,
             }}
-          >
-            {showForm ? "Cancel" : "➕ Add Frequency"}
-          </button>
-        </div>
-      </div>
-
-      {/* Form */}
-      {showForm && (
-        <div className="form">
-          <input
-            type="number"
-            step="any"
-            placeholder="Frequency (MHz)"
-            value={newSignal.frequency}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, frequency: e.target.value })
-            }
           />
-          <input
-            placeholder="City"
-            value={newSignal.city}
-            onChange={(e) => setNewSignal({ ...newSignal, city: e.target.value })}
-          />
-          <input
-            type="number"
-            step="any"
-            placeholder="Latitude"
-            value={newSignal.lat}
-            onChange={(e) => setNewSignal({ ...newSignal, lat: e.target.value })}
-          />
-          <input
-            type="number"
-            step="any"
-            placeholder="Longitude"
-            value={newSignal.lon}
-            onChange={(e) => setNewSignal({ ...newSignal, lon: e.target.value })}
-          />
-          <input
-            placeholder="Type"
-            value={newSignal.type}
-            onChange={(e) => setNewSignal({ ...newSignal, type: e.target.value })}
-          />
-          <input
-            placeholder="Description"
-            value={newSignal.description}
-            onChange={(e) =>
-              setNewSignal({ ...newSignal, description: e.target.value })
-            }
-          />
-          <label style={{ marginTop: 6 }}>Radius (km, 1 - 80)</label>
-          <input
-            type="number"
-            min="1"
-            max="80"
-            step="1"
-            value={newSignal.radius_km}
-            onChange={(e) =>
-              setNewSignal({
-                ...newSignal,
-                radius_km: Math.max(
-                  1,
-                  Math.min(80, Number(e.target.value))
-                ),
-              })
-            }
-          />
-          <button onClick={saveSignal}>✅ Save</button>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th onClick={() => handleSort("frequency")}>
-                Frequency (MHz){sortIndicator("frequency")}
-              </th>
-              <th onClick={() => handleSort("city")}>
-                City{sortIndicator("city")}
-              </th>
-              <th onClick={() => handleSort("lat")}>Lat{sortIndicator("lat")}</th>
-              <th onClick={() => handleSort("lon")}>Lon{sortIndicator("lon")}</th>
-              <th onClick={() => handleSort("type")}>
-                Type{sortIndicator("type")}
-              </th>
-              <th onClick={() => handleSort("description")}>
-                Description{sortIndicator("description")}
-              </th>
-              <th>Added</th>
-              <th style={{ width: 160 }}>Votes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedSignals.map((s) => {
-              const bgColor = s.color || determineColor(s.type);
-              return (
-                <tr key={s.id}>
-                  <td
-                    style={{
-                      backgroundColor: bgColor,
-                      color: "white",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {s.frequency}
-                  </td>
-                  <td>{s.city || "-"}</td>
-                  <td>{s.lat ? Number(s.lat).toFixed(4) : "-"}</td>
-                  <td>{s.lon ? Number(s.lon).toFixed(4) : "-"}</td>
-                  <td>{s.type || "-"}</td>
-                  <td>{s.description || "-"}</td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    {formatTimestamp(s.timestamp)}
-                  </td>
-                  <td>
-                    <div className="vote-controls">
-                      <button
-                        className="vote-btn up"
-                        onClick={() => vote(s.id, "up")}
-                        title="Upvote"
-                      >
-                        ▲
-                      </button>
-                      <div className="vote-count">
-                        {(s.votes && s.votes.up) || 0}
-                      </div>
-                      <button
-                        className="vote-btn down"
-                        onClick={() => vote(s.id, "down")}
-                        title="Downvote"
-                      >
-                        ▼
-                      </button>
-                      <div className="vote-count">
-                        {(s.votes && s.votes.down) || 0}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+        )}
+      </MapContainer>
     </div>
   );
 }
+
+export default MainPage;
