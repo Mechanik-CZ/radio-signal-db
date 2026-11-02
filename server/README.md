@@ -47,10 +47,39 @@ Then on the **existing frontend** service:
    `https://radio-signal-db-api.onrender.com` (the URL from step 6).
 8. Trigger a redeploy (env var changes need a rebuild for Create React App).
 
-Finally, publish the locked-down rules:
+Then publish the locked-down rules:
 
 9. Firebase Console → Realtime Database → Rules → paste the contents of
    `database.rules.json` from the repo root → Publish.
+
+## Roles: guest / moderator / admin
+
+Guests (not logged in) can still only add new frequencies and vote, exactly
+like before. Logging in (email+password, via the "Login" link) unlocks:
+
+- **moderator**: edit any existing frequency directly, and approve/reject/
+  edit "suggest a change" reports from guests (except deletions).
+- **admin**: everything a moderator can, plus delete frequencies directly
+  and approve deletion reports, plus manage who is a moderator.
+
+10. Firebase Console → Authentication → Sign-in method → enable
+    **Email/Password**.
+11. Create the first admin account yourself, locally (never through the
+    website - there's no API for this, on purpose):
+    ```
+    cd server
+    npm install
+    cp .env.example .env   # fill in the real values, same as step 5 above
+    node scripts/create-admin.js you@example.com "a strong password"
+    ```
+    Log in with that email/password from the website's "Login" page.
+12. From then on, that admin can invite moderators from the website's
+    "Users" page: enter their email, the site creates the account and
+    shows a one-time password-reset link to send them so they can set
+    their own password and log in.
+
+A role change (promoting/demoting) applies the next time that person logs
+in - their browser is holding an older token until then.
 
 ## Notes
 

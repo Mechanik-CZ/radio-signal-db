@@ -78,4 +78,65 @@ function validateVoteDirection(dir) {
   return dir === "up" || dir === "down";
 }
 
-module.exports = { validateNewSignal, validateVoteDirection, determineColor };
+const SIGNAL_ID_RE = /^[a-zA-Z0-9_-]+$/;
+
+function isValidSignalId(id) {
+  return typeof id === "string" && SIGNAL_ID_RE.test(id);
+}
+
+// A guest suggesting a change to an existing signal (not a brand new one).
+function validateReportSubmission(body) {
+  if (!body || typeof body !== "object") {
+    return { ok: false, error: "Invalid request body" };
+  }
+  if (!isValidSignalId(body.signalId)) {
+    return { ok: false, error: "Invalid signalId" };
+  }
+  if (body.action !== "edit" && body.action !== "delete") {
+    return { ok: false, error: "action must be 'edit' or 'delete'" };
+  }
+  const note = String(body.note ?? "").trim();
+  if (note.length > 300) {
+    return { ok: false, error: "note must be at most 300 characters" };
+  }
+
+  if (body.action === "delete") {
+    return { ok: true, data: { action: "delete", note } };
+  }
+
+  const changes = validateNewSignal(body.proposedChanges);
+  if (!changes.ok) {
+    return { ok: false, error: `proposedChanges: ${changes.error}` };
+  }
+  return { ok: true, data: { action: "edit", proposedChanges: changes.data, note } };
+}
+
+function validateResolveBody(body, reportAction) {
+  if (!body || typeof body !== "object") {
+    return { ok: false, error: "Invalid request body" };
+  }
+  const { decision } = body;
+  if (!["approve", "reject", "modify_approve"].includes(decision)) {
+    return { ok: false, error: "decision must be approve, reject or modify_approve" };
+  }
+  if (decision === "modify_approve") {
+    if (reportAction !== "edit") {
+      return { ok: false, error: "modify_approve only applies to edit reports" };
+    }
+    const changes = validateNewSignal(body.changes);
+    if (!changes.ok) {
+      return { ok: false, error: `changes: ${changes.error}` };
+    }
+    return { ok: true, decision, changes: changes.data };
+  }
+  return { ok: true, decision };
+}
+
+module.exports = {
+  validateNewSignal,
+  validateVoteDirection,
+  determineColor,
+  isValidSignalId,
+  validateReportSubmission,
+  validateResolveBody,
+};

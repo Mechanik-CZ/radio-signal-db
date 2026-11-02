@@ -1,6 +1,7 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDrrk8HnmLTE8BfGIp4qog0pRVDgiM1xAM",
@@ -14,8 +15,13 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-// The browser only ever reads from Firebase (signals/.read is public).
-// All writes (adding a frequency, voting) go through our own API
-// (see server/) which holds the Firebase Admin credentials and is the
-// only thing the database rules allow to write.
+// The browser only ever reads data from Firebase (signals/.read is public).
+// All writes (adding a frequency, voting, edits, deletes, reports) go
+// through our own API (see server/), which holds the Firebase Admin
+// credentials and is the only thing the database rules allow to write.
 export const db = getDatabase(app);
+
+// Auth is only used to sign in moderators/admins (plain email+password,
+// set up by an admin - see server/scripts/create-admin.js). Guests never
+// see a login prompt; they keep using the site exactly as before.
+export const auth = getAuth(app);

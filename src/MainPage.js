@@ -11,13 +11,11 @@ import {
 } from "react-leaflet";
 import { ref, onValue } from "firebase/database";
 import { db } from "./firebase";
+import { useAuth } from "./AuthContext";
+import { apiFetch } from "./api";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "./App.css";
-
-// Writes (add frequency, vote) go through our own API, not Firebase
-// directly - see server/README.md for why.
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4000";
 
 // categories
 const analogTypes = ["nfm", "fm", "bfm", "am", "nam", "ssb", "usb", "lsb", "dsb"];
@@ -94,7 +92,32 @@ const emptyNewSignal = {
   radius_km: 5,
 };
 
+function signalToFormValues(s) {
+  return {
+    frequency: s.frequency ?? "",
+    city: s.city ?? "",
+    lat: s.lat ?? "",
+    lon: s.lon ?? "",
+    type: s.type ?? "",
+    description: s.description ?? "",
+    radius_km: s.radius_km ?? 5,
+  };
+}
+
+function toSignalPayload(values) {
+  return {
+    frequency: parseFloat(values.frequency),
+    city: values.city,
+    lat: Number(values.lat) || 0,
+    lon: Number(values.lon) || 0,
+    type: values.type,
+    description: values.description,
+    radius_km: Number(values.radius_km) || 0,
+  };
+}
+
 export default function MainPage() {
+  const { role, getToken } = useAuth();
   const [signals, setSignals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -112,6 +135,22 @@ export default function MainPage() {
   const [honeypot, setHoneypot] = useState("");
   const [activeSignalId, setActiveSignalId] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // direct edit (admin/moderator)
+  const [editingSignal, setEditingSignal] = useState(null);
+  const [editValues, setEditValues] = useState(emptyNewSignal);
+  const [editSaving, setEditSaving] = useState(false);
+
+  // suggest a change (anyone)
+  const [reportTarget, setReportTarget] = useState(null); // the signal being reported
+  const [reportAction, setReportAction] = useState("edit"); // "edit" | "delete"
+  const [reportValues, setReportValues] = useState(emptyNewSignal);
+  const [reportNote, setReportNote] = useState("");
+  const [reportHoneypot, setReportHoneypot] = useState("");
+  const [reportSaving, setReportSaving] = useState(false);
+
+  const canEdit = role === "admin" || role === "moderator";
+  const canDelete = role === "admin";
 
   useEffect(() => {
     const signalsRef = ref(db, "signals");
@@ -181,31 +220,15 @@ export default function MainPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/api/signals`, {
+      await apiFetch("/api/signals", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          frequency: parseFloat(newSignal.frequency),
-          city: newSignal.city,
-          lat: Number(newSignal.lat) || 0,
-          lon: Number(newSignal.lon) || 0,
-          type: newSignal.type,
-          description: newSignal.description,
-          radius_km: Number(newSignal.radius_km) || 0,
-          company: honeypot, // honeypot field, must stay empty
-        }),
+        body: { ...toSignalPayload(newSignal), company: honeypot },
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        alert(body.error || "Could not save the frequency, please try again.");
-        return;
-      }
       setNewSignal(emptyNewSignal);
       setHoneypot("");
       setShowForm(false);
     } catch (e) {
-      alert("Could not reach the server, please try again.");
-      console.error("Save error", e);
+      alert(e.message || "Could not save the frequency, please try again.");
     } finally {
       setSaving(false);
     }
@@ -224,23 +247,87 @@ export default function MainPage() {
   // (signals/{id}/voters/{ip-hash} can only be set once).
   const vote = async (id, dir) => {
     try {
-      const res = await fetch(`${API_URL}/api/signals/${id}/vote`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dir }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        if (res.status === 409) {
-          alert(body.error || "You've already voted on this frequency.");
-        } else if (res.status === 429) {
-          // rate limited, just ignore silently
-        } else {
-          console.error("Vote error", body.error);
-        }
-      }
+      await apiFetch(`/api/signals/${id}/vote`, { method: "POST", body: { dir } });
     } catch (e) {
-      console.error("Vote error", e);
+      if (e.status === 409) {
+        alert(e.message || "You've already voted on this frequency.");
+      } else if (e.status !== 429) {
+        console.error("Vote error", e);
+      }
+    }
+  };
+
+  // --- direct edit / delete (admin, moderator) -----------------------------
+  const openEdit = (s) => {
+    setEditingSignal(s);
+    setEditValues(signalToFormValues(s));
+  };
+
+  const saveEdit = async () => {
+    if (!editValues.frequency || !editValues.city) {
+      alert("Frequency and city are required.");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const token = await getToken();
+      await apiFetch(`/api/signals/${editingSignal.id}`, {
+        method: "PUT",
+        token,
+        body: toSignalPayload(editValues),
+      });
+      setEditingSignal(null);
+    } catch (e) {
+      alert(e.message || "Could not update the frequency.");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const deleteSignal = async (s) => {
+    if (!window.confirm(`Delete ${s.frequency} MHz in ${s.city}? This can't be undone.`)) {
+      return;
+    }
+    try {
+      const token = await getToken();
+      await apiFetch(`/api/signals/${s.id}`, { method: "DELETE", token });
+    } catch (e) {
+      alert(e.message || "Could not delete the frequency.");
+    }
+  };
+
+  // --- suggest an edit/deletion (anyone) ------------------------------------
+  const openReport = (s) => {
+    setReportTarget(s);
+    setReportAction("edit");
+    setReportValues(signalToFormValues(s));
+    setReportNote("");
+    setReportHoneypot("");
+  };
+
+  const submitReport = async () => {
+    if (reportAction === "edit" && (!reportValues.frequency || !reportValues.city)) {
+      alert("Frequency and city are required.");
+      return;
+    }
+    setReportSaving(true);
+    try {
+      await apiFetch("/api/reports", {
+        method: "POST",
+        body: {
+          signalId: reportTarget.id,
+          action: reportAction,
+          proposedChanges: reportAction === "edit" ? toSignalPayload(reportValues) : undefined,
+          note: reportNote,
+          company: reportHoneypot,
+        },
+      });
+      setReportTarget(null);
+      alert("Thanks! A moderator will review your suggestion.");
+    } catch (e) {
+      alert(e.message || "Could not submit the report.");
+    } finally {
+      setReportSaving(false);
     }
   };
 
@@ -542,12 +629,13 @@ export default function MainPage() {
               </th>
               <th>Added</th>
               <th style={{ width: 160 }}>Votes</th>
+              <th style={{ width: 120 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {!loading && sortedSignals.length === 0 && (
               <tr>
-                <td colSpan={8} className="empty-row">
+                <td colSpan={9} className="empty-row">
                   No frequencies match your filters.
                 </td>
               </tr>
@@ -607,12 +695,213 @@ export default function MainPage() {
                       </div>
                     </div>
                   </td>
+                  <td>
+                    <div className="row-actions">
+                      {canEdit && (
+                        <button
+                          className="row-action-btn"
+                          title="Edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEdit(s);
+                          }}
+                        >
+                          ✏️
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          className="row-action-btn"
+                          title="Delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteSignal(s);
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      )}
+                      <button
+                        className="row-action-btn"
+                        title="Suggest an edit or deletion"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openReport(s);
+                        }}
+                      >
+                        🚩
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {/* Direct edit modal (admin/moderator) */}
+      {editingSignal && (
+        <div className="modal-backdrop" onClick={() => setEditingSignal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>✏️ Edit frequency</h3>
+            <div className="form-grid">
+              <input
+                type="number"
+                step="any"
+                placeholder="Frequency (MHz)"
+                value={editValues.frequency}
+                onChange={(e) => setEditValues({ ...editValues, frequency: e.target.value })}
+              />
+              <input
+                placeholder="City"
+                value={editValues.city}
+                onChange={(e) => setEditValues({ ...editValues, city: e.target.value })}
+              />
+              <input
+                type="number"
+                step="any"
+                placeholder="Latitude"
+                value={editValues.lat}
+                onChange={(e) => setEditValues({ ...editValues, lat: e.target.value })}
+              />
+              <input
+                type="number"
+                step="any"
+                placeholder="Longitude"
+                value={editValues.lon}
+                onChange={(e) => setEditValues({ ...editValues, lon: e.target.value })}
+              />
+              <input
+                placeholder="Type"
+                value={editValues.type}
+                onChange={(e) => setEditValues({ ...editValues, type: e.target.value })}
+              />
+              <input
+                placeholder="Description"
+                value={editValues.description}
+                onChange={(e) => setEditValues({ ...editValues, description: e.target.value })}
+              />
+            </div>
+            <label className="radius-label">
+              Radius: {editValues.radius_km} km
+              <input
+                type="range"
+                min="1"
+                max="80"
+                step="1"
+                value={editValues.radius_km}
+                onChange={(e) => setEditValues({ ...editValues, radius_km: Number(e.target.value) })}
+              />
+            </label>
+            <div className="report-actions">
+              <button className="save-btn" onClick={saveEdit} disabled={editSaving}>
+                {editSaving ? "Saving…" : "✅ Save"}
+              </button>
+              <button className="cancel-btn" onClick={() => setEditingSignal(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Suggest edit/deletion modal (anyone) */}
+      {reportTarget && (
+        <div className="modal-backdrop" onClick={() => setReportTarget(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>🚩 Suggest a change</h3>
+            <p className="login-hint">
+              {reportTarget.frequency} MHz · {reportTarget.city} - a moderator will review this.
+            </p>
+            <div className="report-type-toggle">
+              <label>
+                <input
+                  type="radio"
+                  checked={reportAction === "edit"}
+                  onChange={() => setReportAction("edit")}
+                />
+                Suggest an edit
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  checked={reportAction === "delete"}
+                  onChange={() => setReportAction("delete")}
+                />
+                Suggest deletion
+              </label>
+            </div>
+
+            {reportAction === "edit" && (
+              <div className="form-grid">
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Frequency (MHz)"
+                  value={reportValues.frequency}
+                  onChange={(e) => setReportValues({ ...reportValues, frequency: e.target.value })}
+                />
+                <input
+                  placeholder="City"
+                  value={reportValues.city}
+                  onChange={(e) => setReportValues({ ...reportValues, city: e.target.value })}
+                />
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Latitude"
+                  value={reportValues.lat}
+                  onChange={(e) => setReportValues({ ...reportValues, lat: e.target.value })}
+                />
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Longitude"
+                  value={reportValues.lon}
+                  onChange={(e) => setReportValues({ ...reportValues, lon: e.target.value })}
+                />
+                <input
+                  placeholder="Type"
+                  value={reportValues.type}
+                  onChange={(e) => setReportValues({ ...reportValues, type: e.target.value })}
+                />
+                <input
+                  placeholder="Description"
+                  value={reportValues.description}
+                  onChange={(e) => setReportValues({ ...reportValues, description: e.target.value })}
+                />
+              </div>
+            )}
+
+            <input
+              className="report-note-input"
+              placeholder="Why? (optional)"
+              value={reportNote}
+              onChange={(e) => setReportNote(e.target.value)}
+            />
+            {/* honeypot */}
+            <input
+              type="text"
+              value={reportHoneypot}
+              onChange={(e) => setReportHoneypot(e.target.value)}
+              autoComplete="off"
+              tabIndex={-1}
+              aria-hidden="true"
+              className="honeypot-field"
+            />
+
+            <div className="report-actions">
+              <button className="save-btn" onClick={submitReport} disabled={reportSaving}>
+                {reportSaving ? "Submitting…" : "Submit suggestion"}
+              </button>
+              <button className="cancel-btn" onClick={() => setReportTarget(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
