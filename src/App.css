@@ -43,6 +43,28 @@ h2 {
   font-size: 22px;
 }
 
+/* === Help page === */
+.help-page {
+  max-width: 760px;
+}
+.help-page h3 {
+  margin: 22px 0 8px;
+  font-size: 17px;
+  color: #fff;
+}
+.help-page p,
+.help-page li {
+  color: #ccc;
+  line-height: 1.5;
+}
+.help-page ul {
+  margin: 4px 0;
+  padding-left: 22px;
+}
+.help-page li {
+  margin-bottom: 4px;
+}
+
 /* === Warning box === */
 .warning-box {
   border: 1px solid #d9534f;
