@@ -10,6 +10,7 @@ function App() {
       <nav className="nav">
         <Link to="/" className="nav-link">Home</Link>
         <Link to="/help" className="nav-link">Help</Link>
+        <span className="nav-managed-by">Managed by @mechanikcz</span>
       </nav>
       <Routes>
         <Route path="/" element={<MainPage />} />
