@@ -43,6 +43,28 @@ h2 {
   font-size: 22px;
 }
 
+/* === Help page === */
+.help-page {
+  max-width: 760px;
+}
+.help-page h3 {
+  margin: 22px 0 8px;
+  font-size: 17px;
+  color: #fff;
+}
+.help-page p,
+.help-page li {
+  color: #ccc;
+  line-height: 1.5;
+}
+.help-page ul {
+  margin: 4px 0;
+  padding-left: 22px;
+}
+.help-page li {
+  margin-bottom: 4px;
+}
+
 /* === Warning box === */
 .warning-box {
   border: 1px solid #d9534f;
@@ -276,6 +298,21 @@ h2 {
 .save-btn:hover {
   background: #006ee0;
 }
+.save-btn:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+/* Honeypot: present in the DOM and tabbable-looking to simple bots, but
+   invisible and unreachable for real users. Real inputs never use this
+   class, so legitimate autofill won't touch it either. */
+.honeypot-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
 
 /* === Popup Styling (dark-friendly) === */
 .multi-popup {
@@ -383,9 +420,180 @@ tr.active-row {
 .vote-btn.down:hover {
   background: rgba(244, 67, 54, 0.15);
 }
+.vote-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .vote-count {
   color: #ccc;
   font-size: 12px;
   min-width: 14px;
   text-align: center;
+}
+
+/* === Row actions (edit/delete/report) === */
+.row-actions {
+  display: flex;
+  gap: 6px;
+}
+.row-action-btn {
+  background: none;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+.row-action-btn:hover {
+  background: #3a3a3a;
+}
+
+/* === Nav: logged-in state === */
+.nav-user {
+  font-size: 12px;
+  color: #ccc;
+}
+.nav-logout {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* === Modal (edit / suggest change) === */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 16px;
+}
+.modal {
+  background: #2b2b2b;
+  border: 1px solid #444;
+  border-radius: 10px;
+  padding: 20px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal h3 {
+  margin-top: 0;
+}
+.report-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.cancel-btn {
+  padding: 8px 16px;
+  background: none;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.cancel-btn:hover {
+  background: #3a3a3a;
+}
+.report-type-toggle {
+  display: flex;
+  gap: 16px;
+  margin: 10px 0;
+  font-size: 14px;
+}
+.report-type-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.report-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  margin-top: 10px;
+  font-size: 14px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #eee;
+}
+
+/* === Login page === */
+.login-page {
+  display: flex;
+  justify-content: center;
+  padding: 60px 16px;
+}
+.login-box {
+  background: #2b2b2b;
+  border: 1px solid #444;
+  border-radius: 10px;
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.login-box input {
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #eee;
+}
+.login-hint {
+  font-size: 13px;
+  color: #999;
+  margin: 0 0 6px;
+}
+.login-error {
+  color: #ff8a80;
+  font-size: 13px;
+}
+
+/* === Reports page === */
+.report-card {
+  background: #2b2b2b;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.report-meta {
+  color: #999;
+  font-size: 13px;
+}
+.report-note {
+  font-style: italic;
+  color: #ccc;
+  font-size: 14px;
+}
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 13px;
+}
+.diff-table th,
+.diff-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #3a3a3a;
+  text-align: left;
+}
+.diff-table tr.diff-changed td {
+  color: #ffd54f;
 }
