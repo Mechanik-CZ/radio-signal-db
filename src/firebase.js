@@ -14,4 +14,8 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+// The browser only ever reads from Firebase (signals/.read is public).
+// All writes (adding a frequency, voting) go through our own API
+// (see server/) which holds the Firebase Admin credentials and is the
+// only thing the database rules allow to write.
 export const db = getDatabase(app);

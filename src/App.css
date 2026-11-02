@@ -276,6 +276,21 @@ h2 {
 .save-btn:hover {
   background: #006ee0;
 }
+.save-btn:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+/* Honeypot: present in the DOM and tabbable-looking to simple bots, but
+   invisible and unreachable for real users. Real inputs never use this
+   class, so legitimate autofill won't touch it either. */
+.honeypot-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
 
 /* === Popup Styling (dark-friendly) === */
 .multi-popup {
@@ -382,6 +397,10 @@ tr.active-row {
 }
 .vote-btn.down:hover {
   background: rgba(244, 67, 54, 0.15);
+}
+.vote-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .vote-count {
   color: #ccc;

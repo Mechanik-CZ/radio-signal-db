@@ -9,11 +9,15 @@ import {
   Circle,
   useMap,
 } from "react-leaflet";
-import { ref, push, onValue, runTransaction } from "firebase/database";
+import { ref, onValue } from "firebase/database";
 import { db } from "./firebase";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "./App.css";
+
+// Writes (add frequency, vote) go through our own API, not Firebase
+// directly - see server/README.md for why.
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4000";
 
 // categories
 const analogTypes = ["nfm", "fm", "bfm", "am", "nam", "ssb", "usb", "lsb", "dsb"];
@@ -105,7 +109,9 @@ export default function MainPage() {
   const [showWarning, setShowWarning] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [newSignal, setNewSignal] = useState(emptyNewSignal);
+  const [honeypot, setHoneypot] = useState("");
   const [activeSignalId, setActiveSignalId] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const signalsRef = ref(db, "signals");
@@ -168,26 +174,41 @@ export default function MainPage() {
     }
   };
 
-  const saveSignal = () => {
+  const saveSignal = async () => {
     if (!newSignal.frequency || !newSignal.city) {
       alert("Frequency and city are required.");
       return;
     }
-    const color = determineColor(newSignal.type);
-    push(ref(db, "signals"), {
-      frequency: parseFloat(newSignal.frequency),
-      city: newSignal.city,
-      lat: Number(newSignal.lat) || 0,
-      lon: Number(newSignal.lon) || 0,
-      type: newSignal.type,
-      description: newSignal.description,
-      color,
-      radius_km: Number(newSignal.radius_km) || 0,
-      timestamp: Date.now(),
-      votes: { up: 0, down: 0 },
-    });
-    setNewSignal(emptyNewSignal);
-    setShowForm(false);
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_URL}/api/signals`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          frequency: parseFloat(newSignal.frequency),
+          city: newSignal.city,
+          lat: Number(newSignal.lat) || 0,
+          lon: Number(newSignal.lon) || 0,
+          type: newSignal.type,
+          description: newSignal.description,
+          radius_km: Number(newSignal.radius_km) || 0,
+          company: honeypot, // honeypot field, must stay empty
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(body.error || "Could not save the frequency, please try again.");
+        return;
+      }
+      setNewSignal(emptyNewSignal);
+      setHoneypot("");
+      setShowForm(false);
+    } catch (e) {
+      alert("Could not reach the server, please try again.");
+      console.error("Save error", e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleMapClick = (latlng) => {
@@ -199,38 +220,28 @@ export default function MainPage() {
   const sortIndicator = (col) =>
     sortColumn === col ? (sortAsc ? " ↑" : " ↓") : "";
 
-  // voting cooldown using localStorage (light anti-spam)
-  const VOTE_COOLDOWN_MS = 30 * 1000;
-  const canVote = (id) => {
+  // One vote per signal per IP address, enforced server-side by the API
+  // (signals/{id}/voters/{ip-hash} can only be set once).
+  const vote = async (id, dir) => {
     try {
-      const last = Number(localStorage.getItem(`lastVote_${id}`) || 0);
-      return Date.now() - last > VOTE_COOLDOWN_MS;
-    } catch {
-      return true;
-    }
-  };
-  const markVoted = (id) => {
-    try {
-      localStorage.setItem(`lastVote_${id}`, String(Date.now()));
-    } catch {}
-  };
-
-  const vote = (id, dir) => {
-    if (!canVote(id)) {
-      alert("Please wait a little before voting again.");
-      return;
-    }
-    const votesRef = ref(db, `signals/${id}/votes`);
-    runTransaction(votesRef, (current) => {
-      if (current == null) {
-        return dir === "up" ? { up: 1, down: 0 } : { up: 0, down: 1 };
+      const res = await fetch(`${API_URL}/api/signals/${id}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dir }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          alert(body.error || "You've already voted on this frequency.");
+        } else if (res.status === 429) {
+          // rate limited, just ignore silently
+        } else {
+          console.error("Vote error", body.error);
+        }
       }
-      if (dir === "up") current.up = (current.up || 0) + 1;
-      else current.down = (current.down || 0) + 1;
-      return current;
-    })
-      .then(() => markVoted(id))
-      .catch((e) => console.error("Vote error", e));
+    } catch (e) {
+      console.error("Vote error", e);
+    }
   };
 
   // group markers by lat/lon to detect collisions
@@ -480,8 +491,23 @@ export default function MainPage() {
               }
             />
           </label>
-          <button className="save-btn" onClick={saveSignal}>
-            ✅ Save
+          {/* honeypot: hidden from real users, bots that fill every field trip it */}
+          <input
+            type="text"
+            name="company"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+            autoComplete="off"
+            tabIndex={-1}
+            aria-hidden="true"
+            className="honeypot-field"
+          />
+          <button
+            className="save-btn"
+            onClick={saveSignal}
+            disabled={saving}
+          >
+            {saving ? "Saving…" : "✅ Save"}
           </button>
         </div>
       )}
