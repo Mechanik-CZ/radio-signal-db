@@ -81,6 +81,40 @@ like before. Logging in (email+password, via the "Login" link) unlocks:
 A role change (promoting/demoting) applies the next time that person logs
 in - their browser is holding an older token until then.
 
+## Frontend security headers (configured in Render, not in code)
+
+Following an external security review, these response headers are set on
+the **frontend** static site via Render Dashboard → `radio-signal-db` →
+Headers (path `/*` for each). They aren't in any file in this repo, so if
+the service is ever recreated, add them again:
+
+| Header | Value |
+| --- | --- |
+| `X-Frame-Options` | `DENY` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org https://raw.githubusercontent.com https://unpkg.com; connect-src 'self' https://radio-signal-db-api.onrender.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'` |
+
+The CSP's `connect-src`/`img-src` allowlist covers: our own API, Firebase
+Realtime Database + Auth, OpenStreetMap tiles, and the marker icon images
+(raw.githubusercontent.com, unpkg.com). If you add a new external resource
+(another font, a new map tile provider, etc.), the CSP needs a matching
+entry or the browser will silently block it - check the browser console
+for `Refused to ...` / CSP errors after any such change.
+
+Reviewed and found to be non-issues (confirmed against the actual source,
+not just by grepping the minified bundle):
+- No `dangerouslySetInnerHTML` anywhere in `src/` - all user content
+  (description, notes, etc.) is rendered via normal JSX `{}` interpolation,
+  which React escapes automatically. The `dangerouslySetInnerHTML` strings
+  present in the production bundle belong to React-DOM's own internals.
+- The "dev comment" and `localhost` strings found in the bundle belong to
+  `react-router-dom`'s built-in error boundary and the Firebase SDK's
+  emulator-detection code, respectively - not anything this app logs or
+  exposes.
+- `POST /api/signals` accepting unauthenticated requests is intentional
+  (guests can add frequencies without an account), not a bug - it's
+  rate-limited, honeypot-protected, and field-validated server-side.
+
 ## Notes
 
 - Render's free Web Service tier sleeps after ~15 minutes of no traffic; the
