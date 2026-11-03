@@ -371,6 +371,20 @@ th {
 th:hover {
   color: #4caf50;
 }
+.vote-sort-buttons {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: 8px;
+}
+.vote-sort-btn {
+  cursor: pointer;
+}
+.vote-sort-btn.up:hover {
+  color: #4caf50;
+}
+.vote-sort-btn.down:hover {
+  color: #f44336;
+}
 tbody tr {
   cursor: pointer;
 }
@@ -596,4 +610,63 @@ tr.active-row {
 }
 .diff-table tr.diff-changed td {
   color: #ffd54f;
+}
+
+/* === Reports: tabs, history filters, status badges === */
+.report-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.report-tab-btn {
+  padding: 7px 16px;
+  background: #2b2b2b;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 14px;
+}
+.report-tab-btn:hover {
+  background: #3a3a3a;
+}
+.report-tab-btn.active {
+  background: #4caf50;
+  border-color: #4caf50;
+  color: #fff;
+  font-weight: 600;
+}
+.history-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.history-filters-row select,
+.history-filters-row input {
+  padding: 6px 8px;
+  font-size: 14px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #eee;
+}
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.status-badge.status-pending {
+  background: rgba(255, 213, 79, 0.15);
+  color: #ffd54f;
+}
+.status-badge.status-approved {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+}
+.status-badge.status-rejected {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
 }

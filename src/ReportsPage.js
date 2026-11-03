@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./AuthContext";
 import { apiFetch } from "./api";
 
@@ -11,6 +11,15 @@ const FIELDS = [
   "description",
   "radius_km",
 ];
+
+function formatTimestamp(ms) {
+  if (!ms) return "-";
+  const d = new Date(Number(ms));
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}.${pad(
+    d.getMonth() + 1
+  )}.${String(d.getFullYear()).slice(-2)}`;
+}
 
 function Diff({ original, proposed }) {
   return (
@@ -73,30 +82,29 @@ function EditBeforeApprove({ report, onCancel, onSubmit }) {
   );
 }
 
-export default function ReportsPage() {
-  const { role, getToken } = useAuth();
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+const STATUS_BADGE = {
+  pending: { label: "⏳ Pending", className: "status-pending" },
+  approved: { label: "✅ Approved", className: "status-approved" },
+  rejected: { label: "❌ Rejected", className: "status-rejected" },
+};
+
+function ReportCard({ r, children }) {
+  return (
+    <div className="report-card">
+      <div className="report-header">
+        <b>{r.action === "delete" ? "🗑️ Delete suggestion" : "✏️ Edit suggestion"}</b>
+        <span className="report-meta">
+          {r.originalSnapshot?.frequency} MHz · {r.originalSnapshot?.city}
+        </span>
+      </div>
+      {r.note && <p className="report-note">“{r.note}”</p>}
+      {children}
+    </div>
+  );
+}
+
+function PendingTab({ role, getToken, reload, reports, loading, error }) {
   const [editingId, setEditingId] = useState(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const token = await getToken();
-      const { reports } = await apiFetch("/api/reports?status=pending", { token });
-      setReports(reports);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [getToken]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const resolve = async (id, decision, changes) => {
     try {
@@ -107,33 +115,20 @@ export default function ReportsPage() {
         body: changes ? { decision, changes } : { decision },
       });
       setEditingId(null);
-      load();
+      reload();
     } catch (err) {
       alert(err.message);
     }
   };
 
-  if (role !== "admin" && role !== "moderator") {
-    return <div className="container">You need to be logged in as a moderator or admin to see this page.</div>;
-  }
-
   return (
-    <div className="container">
-      <h2>🚩 Reports</h2>
+    <>
       {loading && <p>Loading…</p>}
       {error && <p className="login-error">{error}</p>}
       {!loading && reports.length === 0 && <p>No pending reports. 🎉</p>}
 
       {reports.map((r) => (
-        <div className="report-card" key={r.id}>
-          <div className="report-header">
-            <b>{r.action === "delete" ? "🗑️ Delete suggestion" : "✏️ Edit suggestion"}</b>
-            <span className="report-meta">
-              {r.originalSnapshot?.frequency} MHz · {r.originalSnapshot?.city}
-            </span>
-          </div>
-          {r.note && <p className="report-note">“{r.note}”</p>}
-
+        <ReportCard r={r} key={r.id}>
           {r.action === "edit" && editingId !== r.id && (
             <Diff original={r.originalSnapshot} proposed={r.proposedChanges} />
           )}
@@ -162,8 +157,156 @@ export default function ReportsPage() {
           {r.action === "delete" && role !== "admin" && (
             <p className="report-note">Only an admin can approve a deletion.</p>
           )}
-        </div>
+        </ReportCard>
       ))}
+    </>
+  );
+}
+
+function HistoryTab({ reports, loading, error }) {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [actionFilter, setActionFilter] = useState("all");
+  const [resolvedByFilter, setResolvedByFilter] = useState("");
+
+  const filtered = useMemo(
+    () =>
+      reports.filter((r) => {
+        if (statusFilter !== "all" && r.status !== statusFilter) return false;
+        if (actionFilter !== "all" && r.action !== actionFilter) return false;
+        if (
+          resolvedByFilter &&
+          !(r.resolvedBy || "").toLowerCase().includes(resolvedByFilter.toLowerCase())
+        )
+          return false;
+        return true;
+      }),
+    [reports, statusFilter, actionFilter, resolvedByFilter]
+  );
+
+  return (
+    <>
+      <div className="filters-box" style={{ marginBottom: 14 }}>
+        <div className="filters-box-header">
+          <div className="filters-label">Filters</div>
+        </div>
+        <div className="history-filters-row">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
+            <option value="all">Edit + delete</option>
+            <option value="edit">Edit suggestions</option>
+            <option value="delete">Delete suggestions</option>
+          </select>
+          <input
+            placeholder="Resolved by (email)"
+            value={resolvedByFilter}
+            onChange={(e) => setResolvedByFilter(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {loading && <p>Loading…</p>}
+      {error && <p className="login-error">{error}</p>}
+      <p className="results-row">
+        {filtered.length} {filtered.length === 1 ? "report" : "reports"}
+      </p>
+      {!loading && filtered.length === 0 && <p>No reports match these filters.</p>}
+
+      {filtered.map((r) => {
+        const badge = STATUS_BADGE[r.status] || STATUS_BADGE.pending;
+        return (
+          <ReportCard r={r} key={r.id}>
+            <span className={`status-badge ${badge.className}`}>{badge.label}</span>
+            {r.action === "edit" && (
+              <Diff
+                original={r.originalSnapshot}
+                proposed={r.appliedChanges || r.proposedChanges}
+              />
+            )}
+            <p className="report-meta">
+              Submitted {formatTimestamp(r.createdAt)}
+              {r.resolvedBy && (
+                <>
+                  {" "}
+                  · {r.status === "rejected" ? "rejected" : "resolved"} by{" "}
+                  <b>{r.resolvedBy}</b> at {formatTimestamp(r.resolvedAt)}
+                </>
+              )}
+            </p>
+          </ReportCard>
+        );
+      })}
+    </>
+  );
+}
+
+export default function ReportsPage() {
+  const { role, getToken } = useAuth();
+  const [view, setView] = useState("pending"); // "pending" | "history"
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(
+    async (targetView) => {
+      setLoading(true);
+      setError("");
+      try {
+        const token = await getToken();
+        const status = targetView === "pending" ? "pending" : "all";
+        const { reports } = await apiFetch(`/api/reports?status=${status}`, { token });
+        setReports(reports);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getToken]
+  );
+
+  useEffect(() => {
+    load(view);
+  }, [view, load]);
+
+  if (role !== "admin" && role !== "moderator") {
+    return <div className="container">You need to be logged in as a moderator or admin to see this page.</div>;
+  }
+
+  return (
+    <div className="container">
+      <h2>🚩 Reports</h2>
+      <div className="report-tabs">
+        <button
+          className={`report-tab-btn ${view === "pending" ? "active" : ""}`}
+          onClick={() => setView("pending")}
+        >
+          Pending
+        </button>
+        <button
+          className={`report-tab-btn ${view === "history" ? "active" : ""}`}
+          onClick={() => setView("history")}
+        >
+          History
+        </button>
+      </div>
+
+      {view === "pending" ? (
+        <PendingTab
+          role={role}
+          getToken={getToken}
+          reload={() => load("pending")}
+          reports={reports}
+          loading={loading}
+          error={error}
+        />
+      ) : (
+        <HistoryTab reports={reports} loading={loading} error={error} />
+      )}
     </div>
   );
 }
