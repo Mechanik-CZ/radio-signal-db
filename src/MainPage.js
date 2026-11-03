@@ -184,8 +184,18 @@ export default function MainPage() {
   const sortedSignals = useMemo(() => {
     const copy = [...filteredSignals];
     copy.sort((a, b) => {
-      let aVal = a[sortColumn];
-      let bVal = b[sortColumn];
+      let aVal;
+      let bVal;
+      if (sortColumn === "votesUp") {
+        aVal = (a.votes && a.votes.up) || 0;
+        bVal = (b.votes && b.votes.up) || 0;
+      } else if (sortColumn === "votesDown") {
+        aVal = (a.votes && a.votes.down) || 0;
+        bVal = (b.votes && b.votes.down) || 0;
+      } else {
+        aVal = a[sortColumn];
+        bVal = b[sortColumn];
+      }
       if (aVal == null) aVal = "";
       if (bVal == null) bVal = "";
       if (typeof aVal === "string") {
@@ -205,11 +215,13 @@ export default function MainPage() {
   const clearFilters = () =>
     setFilters({ city: "", freq: "", type: "", description: "" });
 
+  // Added date and vote counts are more useful sorted highest/newest first.
+  const DESC_DEFAULT_COLUMNS = ["timestamp", "votesUp", "votesDown"];
   const handleSort = (column) => {
     if (sortColumn === column) setSortAsc(!sortAsc);
     else {
       setSortColumn(column);
-      setSortAsc(true);
+      setSortAsc(!DESC_DEFAULT_COLUMNS.includes(column));
     }
   };
 
@@ -627,8 +639,34 @@ export default function MainPage() {
               <th onClick={() => handleSort("description")}>
                 Description{sortIndicator("description")}
               </th>
-              <th>Added</th>
-              <th style={{ width: 160 }}>Votes</th>
+              <th onClick={() => handleSort("timestamp")}>
+                Added{sortIndicator("timestamp")}
+              </th>
+              <th style={{ width: 160 }}>
+                <span>Votes</span>
+                <span className="vote-sort-buttons">
+                  <span
+                    className="vote-sort-btn up"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSort("votesUp");
+                    }}
+                    title="Sort by upvotes"
+                  >
+                    ▲{sortIndicator("votesUp")}
+                  </span>
+                  <span
+                    className="vote-sort-btn down"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSort("votesDown");
+                    }}
+                    title="Sort by downvotes"
+                  >
+                    ▼{sortIndicator("votesDown")}
+                  </span>
+                </span>
+              </th>
               <th style={{ width: 120 }}>Actions</th>
             </tr>
           </thead>
